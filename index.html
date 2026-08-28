@@ -80,34 +80,18 @@
   .prop-line { font-size: 13.5px; color: #444; margin: 0 0 3px; }
   .prop-line b { color: #222; }
   .note { font-size: 12px; color: #888; line-height: 1.45; margin: 8px 0 0; }
-  .callout { background: #eef4ee; border: 1px solid #cddccd; border-radius: 8px; padding: 13px 15px; font-size: 13.5px; line-height: 1.5; color: #2c4a2c; margin-top: 16px; }
-  .callout b { color: #1f3a1f; }
 
-  /* My Bill right panel (analysis) */
+  /* Bill analysis: three simple boxes */
   #billResults { padding: 22px 24px 40px; max-width: 940px; margin: 0 auto; }
-  #billResults .card { background: #fff; border: 1px solid #e2e2e2; border-radius: 10px; padding: 18px 20px; margin-bottom: 16px; }
-  #billResults .card h2 { font-size: 15px; font-weight: 900; margin: 0 0 12px; }
-  #billResults h1 { font-size: 26px; font-weight: 900; margin: 0 0 2px; letter-spacing: -0.4px; }
-  .scopebadge { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .4px; background: #222; color: #fff; border-radius: 999px; padding: 3px 9px; margin-bottom: 10px; }
-  .bill-sub { font-size: 14px; color: #444; line-height: 1.5; margin: 0 0 18px; max-width: 90%; }
-  .result-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-  .metric { border: 1px solid #e6e6e6; border-radius: 8px; padding: 13px 15px; }
-  .metric .lab { font-size: 11.5px; color: #777; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; }
-  .metric .amt { font-size: 23px; font-weight: 900; margin-top: 6px; }
-  .metric .sub { font-size: 12px; color: #888; margin-top: 2px; }
-  .metric.actual .amt { color: #315C8C; }
-  .metric.scenario .amt { color: #9AA7B5; }
-  .metric.diff .amt { color: #B8860B; }
-  .bars { margin-top: 16px; }
-  .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 13px; }
-  .bar-row .blab { width: 120px; text-align: right; color: #555; }
-  .bar-track { flex: 1; background: #e6e6e6; border-radius: 4px; height: 30px; }
-  .bar-fill { height: 30px; border-radius: 4px; display: block; }
-  .bar-fill.actual { background: #315C8C; }
-  .bar-fill.scenario { background: #9AA7B5; }
-  .bar-row .bamt { width: 120px; font-weight: 800; }
-  .policy { font-size: 12.5px; color: #444; line-height: 1.5; margin: 0 0 8px; }
-  .policy a { color: #315C8C; }
+  .bill-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 26px; }
+  .bill-card { border-radius: 12px; padding: 22px 20px; background: #fff; border: 1px solid #e2e2e2; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  .bill-card .lab { font-size: 12px; color: #777; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; margin-bottom: 10px; }
+  .bill-card .amt { font-size: 30px; font-weight: 900; line-height: 1.1; }
+  .bill-card .diff-note { margin-top: 10px; font-size: 13.5px; line-height: 1.4; font-weight: 700; }
+  .bill-card.pos { background: #eef4ee; border-color: #cddccd; }
+  .bill-card.pos .amt, .bill-card.pos .diff-note { color: #2c6e2c; }
+  .bill-card.neg { background: #fbeceb; border-color: #e6bfbc; }
+  .bill-card.neg .amt, .bill-card.neg .diff-note { color: #c0392b; }
   .detail-item { font-size: 13.5px; margin: 4px 0; color: #444; }
   .detail-item b { color: #222; }
   .sources { font-size: 12.5px; line-height: 1.6; }
@@ -128,8 +112,7 @@
     #app { grid-template-columns: 1fr; grid-template-rows: auto 1fr; height: auto; }
     #leftPanel { border-right: none; border-bottom: 1px solid #d9d9d9; }
     #mapView { height: 45vh; }
-    .result-grid { grid-template-columns: 1fr; }
-    .bar-row .blab, .bar-row .bamt { width: 80px; }
+    .bill-cards { grid-template-columns: 1fr; }
     .search-row { flex-direction: column; }
   }
 </style>
@@ -150,12 +133,33 @@
         </select>
         <div class="grade-badge" id="gradeBadge" title=""></div>
       </div>
-      <details class="section-card" open>
+      <details class="section-card">
         <summary>Revenue &amp; spending flow</summary>
         <div class="body" style="position:relative;">
-          <p class="chart-note">Total nominal revenue by source (left) flows into a shared General Fund pool, then out by spending area (right).</p>
+          <p class="chart-note">Share of total revenue by source (left) flows into a shared General Fund pool, then out by spending area (right).</p>
           <div class="sankey-tooltip" id="sankeyTip"></div>
           <svg id="sankey" viewBox="0 0 700 520" width="100%"></svg>
+        </div>
+      </details>
+      <details class="section-card">
+        <summary>County financial data</summary>
+        <div class="body">
+          <p class="chart-note">County-level constants behind the per-property benchmark (FY figures).</p>
+          <p class="detail-item"><b>Actual county rate:</b> <span id="dActualRate"></span> per $100 (FY2025&ndash;26 official Mecklenburg county rate).</p>
+          <p class="detail-item"><b>Scenario rate:</b> <span id="dScenarioRate2"></span> per $100 — the inflation+population benchmark levy capped at the actual levy, divided by the taxable base.</p>
+          <p class="detail-item"><b>Actual county levy:</b> <span id="dLActual"></span> (FY2025&ndash;26).</p>
+          <p class="detail-item"><b>County taxable base:</b> <span id="dX"></span> (FY2025&ndash;26 assessed valuation).</p>
+          <p class="detail-item"><b>2016 baseline levy:</b> <span id="dL2016"></span> (FY2016&ndash;17).</p>
+          <p class="detail-item"><b>2025 benchmark ceiling:</b> <span id="dB"></span> — compounding the 2016 baseline through <span id="dN"></span> inflation+population transitions.</p>
+          <p class="detail-item"><b>Scenario levy (capped):</b> <span id="dLS"></span> = min(actual, ceiling).</p>
+          <p class="detail-item"><b>Rate reconciliation:</b> <span id="dRec"></span> between the reported levy and rate &times; base &divide; 100.</p>
+          <table class="t">
+            <thead><tr><th>Transition into year</th><th>Inflation</th><th>Population</th><th>Growth</th><th>Benchmark levy</th></tr></thead>
+            <tbody id="trBody"></tbody>
+          </table>
+          <p class="note">Inflation is the U.S. CPI-U annual average (BLS). Population is Mecklenburg annual resident estimates (U.S. Census). The transition into year T uses that year&rsquo;s inflation and population change.</p>
+          <p class="note"><b>Assumptions:</b> the ceiling compounds from the 2016 baseline; a year below the ceiling does not ratchet it down; no separate new-construction allowance or overrides. The scenario never prescribes an increase — if the actual levy is already below the ceiling, the actual rate is retained.</p>
+          <p class="sources"><b>Sources:</b> Mecklenburg county tax rate (<a href="#" data-src="rates">tax.mecknc.gov</a>), county rate announcement (<a href="#" data-src="rate_news">pi.mecknc.gov</a>), NCDOR levy/valuation reports (<a href="#" data-src="ncdor_levy">ncdor.gov</a>), NC OneMap parcels (<a href="#" data-src="parcels">nconemap.gov</a>), U.S. Census population estimates (<a href="#" data-src="census_pop">census.gov</a>), BLS CPI-U (<a href="#" data-src="bls_cpi">bls.gov</a>).</p>
         </div>
       </details>
       <p class="panel-sentence" id="sentence"></p>
@@ -195,51 +199,21 @@
 
     <!-- Bill analysis -->
     <div id="billResults" class="view hidden">
-      <div class="scopebadge">2025 &middot; Mecklenburg County tax only</div>
-      <h1>Your county property tax</h1>
-      <p class="bill-sub">How much county property tax a home would pay at the actual 2025 county rate vs. a rate implied by a 2016-to-2025 inflation-plus-population benchmark. This is the county tax only — Charlotte/town taxes, special-district taxes, and flat fees are excluded. Use the assessed value as the taxable value; NC relief/exemption cases are not modeled.</p>
-
-      <div class="card">
-        <h2>County property tax, annually</h2>
-        <div class="result-grid">
-          <div class="metric actual"><div class="lab">Actual rate</div><div class="amt" id="mActual"></div><div class="sub">at <span id="rActualRate"></span> per $100</div></div>
-          <div class="metric scenario"><div class="lab">Benchmark</div><div class="amt" id="mScenario"></div><div class="sub">at <span id="rScenarioRate"></span> per $100</div></div>
-          <div class="metric diff"><div class="lab">Annual difference</div><div class="amt" id="mDiff"></div><div class="sub" id="mDiffPct"></div></div>
+      <div class="bill-cards">
+        <div class="bill-card">
+          <div class="lab">What you paid</div>
+          <div class="amt" id="mActual"></div>
         </div>
-        <div class="bars">
-          <div class="bar-row"><div class="blab">Actual rate</div><span class="bar-track"><span class="bar-fill actual" id="barActual"></span></span><span class="bamt" id="amtActual"></span></div>
-          <div class="bar-row"><div class="blab">Benchmark</div><span class="bar-track"><span class="bar-fill scenario" id="barScenario"></span></span><span class="bamt" id="amtScenario"></span></div>
+        <div class="bill-card">
+          <div class="lab">What you could have paid</div>
+          <div class="amt" id="mScenario"></div>
         </div>
-        <div class="callout" id="resultNote"></div>
+        <div class="bill-card" id="diffCard">
+          <div class="lab">The difference</div>
+          <div class="amt" id="mDiff"></div>
+          <div class="diff-note" id="mDiffNote"></div>
+        </div>
       </div>
-
-      <div class="card">
-        <h2>About this comparison</h2>
-        <p class="policy">This comparison holds the property&rsquo;s value constant and changes only the county tax rate. The benchmark models an inflation-plus-population limit: HB 1089 requires county levy limits but does not itself specify this formula. [<a href="#" data-src="hb1089">source</a>]</p>
-        <p class="policy">It is a look at the current county rate relative to a 2016-to-2025 inflation-plus-population scenario — not a forecast of an enacted future rate, and it does not model changes in services, other taxes/fees, or economic responses.</p>
-      </div>
-
-      <details class="card"><summary>How this is calculated</summary>
-        <div>
-          <p class="detail-item"><b>Actual county rate:</b> <span id="dActualRate"></span> per $100 (FY2025&ndash;26 official Mecklenburg county rate).</p>
-          <p class="detail-item"><b>Scenario rate:</b> derived by capping the inflation-plus-population benchmark levy at the actual levy and dividing by the total taxable base.</p>
-          <p class="detail-item"><b>Actual county levy:</b> <span id="dLActual"></span> (FY2025&ndash;26).</p>
-          <p class="detail-item"><b>County taxable base:</b> <span id="dX"></span> (FY2025&ndash;26 assessed valuation).</p>
-          <p class="detail-item"><b>2016 baseline levy:</b> <span id="dL2016"></span> (FY2016&ndash;17).</p>
-          <p class="detail-item"><b>2025 benchmark ceiling:</b> <span id="dB"></span> — compounding the 2016 baseline through <span id="dN"></span> inflation+population transitions.</p>
-          <p class="detail-item"><b>Scenario levy (capped):</b> <span id="dLS"></span> = min(actual, ceiling).</p>
-          <p class="detail-item"><b>Scenario rate:</b> 100 &times; <span id="dLS2"></span> &divide; <span id="dX2"></span> = <span id="dScenarioRate2"></span> per $100.</p>
-          <p class="detail-item"><b>Rate reconciliation:</b> <span id="dRec"></span> between the reported levy and rate &times; base &divide; 100.</p>
-          <p class="detail-item">Then for a property: bill = value &times; rate &divide; 100; difference = actual bill &minus; benchmark bill.</p>
-          <table class="t">
-            <thead><tr><th>Transition into year</th><th>Inflation</th><th>Population</th><th>Growth</th><th>Benchmark levy</th></tr></thead>
-            <tbody id="trBody"></tbody>
-          </table>
-          <p class="note">Inflation is the U.S. CPI-U annual average (BLS). Population is Mecklenburg annual resident estimates (U.S. Census). The transition into year T uses that year&rsquo;s inflation and population change.</p>
-          <p class="note"><b>Assumptions:</b> the ceiling compounds from the 2016 baseline; a year below the ceiling does not ratchet it down; no separate new-construction allowance or overrides. The scenario never prescribes an increase — if the actual levy is already below the ceiling, the actual rate is retained.</p>
-          <p class="sources"><b>Sources:</b> Mecklenburg county tax rate (<a href="#" data-src="rates">tax.mecknc.gov</a>), county rate announcement (<a href="#" data-src="rate_news">pi.mecknc.gov</a>), NCDOR levy/valuation reports (<a href="#" data-src="ncdor_levy">ncdor.gov</a>), NC OneMap parcels (<a href="#" data-src="parcels">nconemap.gov</a>), U.S. Census population estimates (<a href="#" data-src="census_pop">census.gov</a>), BLS CPI-U (<a href="#" data-src="bls_cpi">bls.gov</a>).</p>
-        </div>
-      </details>
     </div>
   </main>
 </div>
@@ -307,9 +281,9 @@ function renderSankey(d) {
   const nodes = [];
   const gfIndex = d.revenue.length;
   const gfName = "General Fund";
-  d.revenue.forEach(r => nodes.push({ name: r.area }));
-  nodes.push({ name: gfName });
-  d.spending.forEach(s => nodes.push({ name: s.area }));
+  d.revenue.forEach(r => nodes.push({ name: r.area, share: r.share }));
+  nodes.push({ name: gfName, share: 1 });
+  d.spending.forEach(s => nodes.push({ name: s.area, share: s.share }));
   const links = [];
   d.revenue.forEach((r, i) => links.push({ source: i, target: gfIndex, value: r.total }));
   d.spending.forEach((s, j) => links.push({ source: gfIndex, target: gfIndex + 1 + j, value: s.total }));
@@ -330,9 +304,9 @@ function renderSankey(d) {
     .on("mouseout", () => tooltip.style("display", "none"));
   const node = svg.append("g").selectAll("g").data(graph.nodes).join("g");
   node.append("rect").attr("x", d => d.x0).attr("y", d => d.y0).attr("height", d => d.y1 - d.y0).attr("width", d => d.x1 - d.x0).attr("fill", d => color(d.name)).attr("rx", 2)
-    .on("mousemove", function (event, n) { tooltip.style("display", "block").style("left", (event.pageX + 14) + "px").style("top", (event.pageY - 10) + "px").html(`${n.name}: ${fmtMoney(n.value)}`); })
+    .on("mousemove", function (event, n) { tooltip.style("display", "block").style("left", (event.pageX + 14) + "px").style("top", (event.pageY - 10) + "px").html(`${n.name}${n.share != null ? " (" + Math.round(n.share * 100) + "%)" : ""}: ${fmtMoney(n.value)}`); })
     .on("mouseout", () => tooltip.style("display", "none"));
-  node.append("text").attr("x", d => d.x0 < width / 2 + margin.left ? d.x0 - 6 : d.x1 + 6).attr("y", d => (d.y0 + d.y1) / 2).attr("dy", "0.35em").attr("text-anchor", d => d.x0 < width / 2 + margin.left ? "end" : "start").attr("font-size", 11).text(d => d.name);
+  node.append("text").attr("x", d => d.x0 < width / 2 + margin.left ? d.x0 - 6 : d.x1 + 6).attr("y", d => (d.y0 + d.y1) / 2).attr("dy", "0.35em").attr("text-anchor", d => d.x0 < width / 2 + margin.left ? "end" : "start").attr("font-size", 11).text(d => d.name === gfName ? d.name : `${d.name} (${Math.round(d.share * 100)}%)`);
 }
 
 // ---- My Bill ----
@@ -344,8 +318,6 @@ function fillDetails() {
   byId("dB").textContent = "$" + Math.round(COUNTY.b_endpoint).toLocaleString();
   byId("dN").textContent = COUNTY.transitions.length;
   byId("dLS").textContent = "$" + Math.round(COUNTY.l_scenario).toLocaleString();
-  byId("dLS2").textContent = "$" + Math.round(COUNTY.l_scenario).toLocaleString();
-  byId("dX2").textContent = "$" + COUNTY.x.toLocaleString();
   byId("dScenarioRate2").textContent = COUNTY.r_scenario.toFixed(4);
   byId("dRec").textContent = (COUNTY.rate_reconciliation_pct >= 0 ? "+" : "") + COUNTY.rate_reconciliation_pct.toFixed(3) + "%";
   const tb = byId("trBody");
@@ -422,22 +394,12 @@ function selectParcel(f) {
 
   byId("mActual").textContent = fmtMoney(vm.tax_actual);
   byId("mScenario").textContent = fmtMoney(vm.tax_scenario);
+  const over = vm.difference > 0;
   byId("mDiff").textContent = fmtMoney(vm.difference);
-  byId("mDiffPct").textContent = (vm.difference === 0 ? "0%" : (vm.difference > 0 ? "+" : "") + vm.percent_difference.toFixed(2) + "%");
-  byId("rActualRate").textContent = COUNTY.r_actual.toFixed(4);
-  byId("rScenarioRate").textContent = COUNTY.r_scenario.toFixed(4);
-
-  const max = Math.max(vm.tax_actual, vm.tax_scenario, 1);
-  byId("barActual").style.width = (100 * vm.tax_actual / max) + "%";
-  byId("barScenario").style.width = (100 * vm.tax_scenario / max) + "%";
-  byId("amtActual").textContent = fmtMoney(vm.tax_actual);
-  byId("amtScenario").textContent = fmtMoney(vm.tax_scenario);
-
-  if (vm.below_benchmark) {
-    byId("resultNote").innerHTML = `<b>Mecklenburg County is at or below the inflation+population benchmark.</b> Its FY2025&ndash;26 county levy (<b>$${fmtBig(COUNTY.l_actual)}</b>) is below the 2025 benchmark ceiling (<b>$${fmtBig(COUNTY.b_endpoint)}</b>) built from 2016, so the capped scenario keeps the actual rate and the difference is effectively $0. The county reduced its rate sharply ($${COUNTY.r_2016.toFixed(4)} in 2016 to $${COUNTY.r_actual.toFixed(4)} per $100 in 2025) as assessed values grew.`;
-  } else {
-    byId("resultNote").innerHTML = `<b>This property pays ${vm.percent_difference > 0 ? "more" : "less"} at the actual rate than under the benchmark.</b> The annual difference is shown above.`;
-  }
+  byId("mDiffNote").textContent = over ? "This amendment could have saved you " + fmtMoney(Math.abs(vm.difference)) : "";
+  const diffCard = byId("diffCard");
+  diffCard.classList.remove("pos", "neg");
+  diffCard.classList.add(over ? "neg" : "pos");
   byId("billResults").classList.remove("hidden");
   highlightParcel(f.parno);
 }
