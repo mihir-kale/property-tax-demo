@@ -264,6 +264,7 @@ const fmtBig = (x) => (x / 1e6).toLocaleString(undefined, { maximumFractionDigit
 let DATA = null;      // county mecklenburg.json
 let COUNTY = null;    // benchmark constant mecklenburg_benchmark.json
 let MAP = null;
+let PARCEL_LAYER = null;
 
 const byId = (id) => document.getElementById(id);
 
@@ -438,6 +439,35 @@ function selectParcel(f) {
     byId("resultNote").innerHTML = `<b>This property pays ${vm.percent_difference > 0 ? "more" : "less"} at the actual rate than under the benchmark.</b> The annual difference is shown above.`;
   }
   byId("billResults").classList.remove("hidden");
+  highlightParcel(f.parno);
+}
+
+async function highlightParcel(parno) {
+  if (!MAP || !parno) return;
+  try {
+    const body = new URLSearchParams();
+    body.append("where", `parno = '${parno}'`);
+    body.append("outFields", "siteadd,parno");
+    body.append("f", "geojson");
+    body.append("outSR", "4326");
+    body.append("returnGeometry", "true");
+    const resp = await fetch(ONEMAP_QUERY, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: body.toString() });
+    const gj = await resp.json();
+    if (gj.error) throw new Error(gj.error.message || "Service error");
+    if (!gj.features || !gj.features.length) return;
+    const fc = gj.features.length === 1 ? gj : { type: "FeatureCollection", features: gj.features };
+    if (PARCEL_LAYER) { MAP.removeLayer(PARCEL_LAYER); PARCEL_LAYER = null; }
+    PARCEL_LAYER = L.geoJSON(fc, { style: { fillColor: "#F05252", fillOpacity: 0.55, weight: 3, color: "#B30000" } }).addTo(MAP);
+    PARCEL_LAYER.bindTooltip(`<strong>${featLabel(fc.features[0])}</strong>`);
+    PARCEL_LAYER.getBounds().isValid() && MAP.fitBounds(PARCEL_LAYER.getBounds(), { padding: [30, 30], maxZoom: 18 });
+  } catch (err) {
+    console.error("parcel highlight failed:", err);
+  }
+}
+
+function featLabel(feat) {
+  const p = feat && feat.properties;
+  return p && p.siteadd ? p.siteadd : "Parcel";
 }
 
 // ---- init ----
