@@ -18,12 +18,6 @@
   }
   #header .brand { font-size: 18px; font-weight: 900; letter-spacing: -0.2px; margin-right: auto; }
   #header .brand .sub { display: block; font-size: 11px; font-weight: 600; color: #9fb2c4; letter-spacing: .5px; }
-  .seg { display: flex; background: #2b3a48; border-radius: 8px; padding: 3px; gap: 3px; }
-  .seg button {
-    border: none; background: transparent; color: #c6d2dc; font-weight: 800; font-size: 13px;
-    padding: 8px 18px; border-radius: 6px; cursor: pointer; letter-spacing: .3px;
-  }
-  .seg button.active { background: #315C8C; color: #fff; }
   #app {
     display: grid;
     grid-template-columns: min(42%, 560px) 1fr;
@@ -40,7 +34,7 @@
   }
   #rightArea { position: relative; overflow-y: auto; background: #eef0f2; }
 
-  .view { display: none; }
+  .view { display: block; }
   .view.active { display: block; }
 
   /* County left panel */
@@ -71,7 +65,6 @@
   .outline-note { font-size: 12px; color: #888; margin-top: 10px; line-height: 1.45; }
 
   /* My Bill left panel */
-  #billPanel h2 { font-size: 16px; font-weight: 900; margin: 0 0 12px; }
   .search-row { display: flex; gap: 8px; }
   #addrInput { flex: 1; font-size: 15px; padding: 11px 12px; border: 1px solid #cfcfcf; border-radius: 6px; min-width: 0; }
   #searchBtn { font-size: 15px; font-weight: 700; padding: 11px 16px; border: none; border-radius: 6px; background: #315C8C; color: #fff; cursor: pointer; white-space: nowrap; }
@@ -124,17 +117,17 @@
   table.t th:first-child, table.t td:first-child { text-align: left; }
   table.t th { background: #fafafa; font-weight: 800; }
 
-  /* County right panel (map) */
+  /* Right panel: map on top, bill analysis below */
+  #mapView { position: relative; height: 60vh; min-height: 380px; }
   #mapWrap { position: absolute; inset: 0; }
   #map { position: absolute; inset: 0; }
 
   .empty { display: flex; align-items: center; justify-content: center; height: 100%; color: #999; font-size: 15px; padding: 30px; }
 
   @media (max-width: 760px) {
-    #app { grid-template-columns: 1fr; grid-template-rows: auto 55vh; height: auto; }
+    #app { grid-template-columns: 1fr; grid-template-rows: auto 1fr; height: auto; }
     #leftPanel { border-right: none; border-bottom: 1px solid #d9d9d9; }
-    #rightArea { height: 55vh; }
-    #mapWrap { position: relative; }
+    #mapView { height: 45vh; }
     .result-grid { grid-template-columns: 1fr; }
     .bar-row .blab, .bar-row .bamt { width: 80px; }
     .search-row { flex-direction: column; }
@@ -144,16 +137,12 @@
 <body>
 <header id="header">
   <div class="brand">NC Property Tax<span class="sub">Understanding HB 1089</span></div>
-  <div class="seg" role="tablist">
-    <button id="tabBill" class="active" type="button" role="tab" aria-selected="true" aria-controls="viewBill">My Bill</button>
-    <button id="tabCounty" type="button" role="tab" aria-selected="false" aria-controls="viewCounty">County</button>
-  </div>
 </header>
 
 <div id="app">
   <aside id="leftPanel">
     <!-- County view (left) -->
-    <section id="countyPanel" class="view">
+    <section id="countyPanel" class="view active">
       <div class="county-bar">
         <select id="countySelect" aria-label="Select county">
           <option value="mecklenburg">Mecklenburg County</option>
@@ -170,31 +159,31 @@
         </div>
       </details>
       <p class="panel-sentence" id="sentence"></p>
-      <p class="outline-note">County-level index for demonstration, 2016–2025. Based on county property tax revenue, population, and CPI-U.</p>
-    </section>
 
-    <!-- My Bill view (left) -->
-    <section id="billPanel" class="view active">
-      <h2>Find a property</h2>
-      <div class="search-row">
-        <input id="addrInput" type="text" placeholder="Street address, e.g. 1000 E Woodlawn Rd" autocomplete="off" aria-label="Street address" />
-        <button id="searchBtn" type="button">Search</button>
-      </div>
-      <p class="hint">Partial addresses are OK. Pick a specific property if several match.</p>
-      <div id="status" role="status"></div>
-      <ul class="cands" id="cands"></ul>
-      <div id="nores" class="hidden">
-        <p class="note" style="color:#8a3b3b;">No residential properties matched. Check the spelling or try a nearby street name.</p>
-      </div>
-      <div id="billMeta" class="hidden">
-        <div class="rule" style="height:1px;background:#e2e2e2;margin:14px 0;"></div>
-        <h2>Selected property</h2>
-        <p class="prop-line"><b>Address:</b> <span id="rAddress"></span></p>
-        <p class="prop-line"><b>Parcel ID:</b> <span id="rParcel"></span></p>
-        <p class="prop-line"><b>Assessed value:</b> <span id="rValue"></span> (<span id="rBasis"></span>)</p>
-        <p class="prop-line"><b>Use:</b> <span id="rUse"></span></p>
-        <p class="note">Parcel data is a live NC OneMap snapshot and may predate the 2025 tax year. Sources and method in the right panel.</p>
-      </div>
+      <details class="section-card" open>
+        <summary>My address</summary>
+        <div class="body">
+          <div class="search-row">
+            <input id="addrInput" type="text" placeholder="Street address, e.g. 1000 E Woodlawn Rd" autocomplete="off" aria-label="Street address" />
+            <button id="searchBtn" type="button">Search</button>
+          </div>
+          <p class="hint">Partial addresses are OK. Pick a specific property if several match.</p>
+          <div id="status" role="status"></div>
+          <ul class="cands" id="cands"></ul>
+          <div id="nores" class="hidden">
+            <p class="note" style="color:#8a3b3b;">No residential properties matched. Check the spelling or try a nearby street name.</p>
+          </div>
+          <div id="billMeta" class="hidden">
+            <div class="rule" style="height:1px;background:#e2e2e2;margin:14px 0;"></div>
+            <p class="prop-line"><b>Address:</b> <span id="rAddress"></span></p>
+            <p class="prop-line"><b>Parcel ID:</b> <span id="rParcel"></span></p>
+            <p class="prop-line"><b>Assessed value:</b> <span id="rValue"></span> (<span id="rBasis"></span>)</p>
+            <p class="prop-line"><b>Use:</b> <span id="rUse"></span></p>
+            <p class="note">Parcel data is a live NC OneMap snapshot and may predate the 2025 tax year. Sources and method on the right.</p>
+          </div>
+        </div>
+      </details>
+      <p class="outline-note">County-level index for demonstration, 2016–2025. Based on county property tax revenue, population, and CPI-U.</p>
     </section>
   </aside>
 
@@ -204,8 +193,8 @@
       <div id="mapWrap"><div id="map"></div></div>
     </div>
 
-    <!-- My Bill view (right): analysis -->
-    <div id="billResults" class="view active hidden">
+    <!-- Bill analysis -->
+    <div id="billResults" class="view hidden">
       <div class="scopebadge">2025 &middot; Mecklenburg County tax only</div>
       <h1>Your county property tax</h1>
       <p class="bill-sub">How much county property tax a home would pay at the actual 2025 county rate vs. a rate implied by a 2016-to-2025 inflation-plus-population benchmark. This is the county tax only — Charlotte/town taxes, special-district taxes, and flat fees are excluded. Use the assessed value as the taxable value; NC relief/exemption cases are not modeled.</p>
@@ -277,16 +266,6 @@ let COUNTY = null;    // benchmark constant mecklenburg_benchmark.json
 let MAP = null;
 
 const byId = (id) => document.getElementById(id);
-
-// ---- view toggling ----
-function setView(view) {
-  document.querySelectorAll("#countyPanel,#billPanel").forEach(el => el.classList.toggle("active", /bill/.test(view) ? el.id === "billPanel" : el.id === "countyPanel"));
-  document.querySelectorAll("#mapView,#billResults").forEach(el => el.classList.toggle("active", /bill/.test(view) ? el.id === "billResults" : el.id === "mapView"));
-  byId("tabBill").classList.toggle("active", view === "bill");
-  byId("tabCounty").classList.toggle("active", view === "county");
-  byId("tabBill").setAttribute("aria-selected", view === "bill" ? "true" : "false");
-  byId("tabCounty").setAttribute("aria-selected", view === "county" ? "true" : "false");
-}
 
 // ---- data loading ----
 async function loadAll() {
@@ -463,9 +442,6 @@ function selectParcel(f) {
 
 // ---- init ----
 document.addEventListener("DOMContentLoaded", () => {
-  setView("bill");
-  byId("tabBill").addEventListener("click", () => setView("bill"));
-  byId("tabCounty").addEventListener("click", () => setView("county"));
   const run = () => searchAddress(byId("addrInput").value);
   byId("searchBtn").addEventListener("click", run);
   byId("addrInput").addEventListener("keydown", e => { if (e.key === "Enter") run(); });
