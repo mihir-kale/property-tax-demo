@@ -1,0 +1,162 @@
+{
+  "place": "Mecklenburg",
+  "label": "Mecklenburg County",
+  "geography": "County",
+  "period": "2016-2025",
+  "score": 0,
+  "difference_dollars": -68341034,
+  "difference_pct": -0.58,
+  "actual_property_tax_total": 11720615512,
+  "benchmark_property_tax_total": 11788956546,
+  "revenue": [
+    {
+      "area": "Property taxes",
+      "total": 11720615512,
+      "share": 0.5243
+    },
+    {
+      "area": "Sales taxes",
+      "total": 3724788449,
+      "share": 0.1666
+    },
+    {
+      "area": "Debt proceeds",
+      "total": 2194930462,
+      "share": 0.0982
+    },
+    {
+      "area": "Intergovernmental",
+      "total": 1916395150,
+      "share": 0.0857
+    },
+    {
+      "area": "Sales & services",
+      "total": 1292798585,
+      "share": 0.0578
+    },
+    {
+      "area": "Other",
+      "total": 814748649,
+      "share": 0.0364
+    },
+    {
+      "area": "Other taxes",
+      "total": 691384164,
+      "share": 0.0309
+    }
+  ],
+  "spending": [
+    {
+      "area": "Education",
+      "total": 7507567130,
+      "share": 0.3535
+    },
+    {
+      "area": "Other",
+      "total": 3520957203,
+      "share": 0.1658
+    },
+    {
+      "area": "Human services",
+      "total": 3491166813,
+      "share": 0.1644
+    },
+    {
+      "area": "General government",
+      "total": 2572973155,
+      "share": 0.1211
+    },
+    {
+      "area": "Debt service",
+      "total": 2152773054,
+      "share": 0.1014
+    },
+    {
+      "area": "Public safety",
+      "total": 1993659052,
+      "share": 0.0939
+    }
+  ],
+  "benchmark_by_year": [
+    {
+      "year": 2016,
+      "actual": 999360965,
+      "benchmark": 999360965,
+      "population_growth": 0,
+      "inflation_growth": 0,
+      "allowed_growth": 0
+    },
+    {
+      "year": 2017,
+      "actual": 1009464637,
+      "benchmark": 1021538094,
+      "population_growth": 0.0235,
+      "inflation_growth": -0.0013,
+      "allowed_growth": 0.0222
+    },
+    {
+      "year": 2018,
+      "actual": 1038003637,
+      "benchmark": 1049725659,
+      "population_growth": 0.0208,
+      "inflation_growth": 0.0068,
+      "allowed_growth": 0.0276
+    },
+    {
+      "year": 2019,
+      "actual": 1072336129,
+      "benchmark": 1085350812,
+      "population_growth": 0.0183,
+      "inflation_growth": 0.0156,
+      "allowed_growth": 0.0339
+    },
+    {
+      "year": 2020,
+      "actual": 1141255780,
+      "benchmark": 1131658370,
+      "population_growth": 0.0138,
+      "inflation_growth": 0.0288,
+      "allowed_growth": 0.0427
+    },
+    {
+      "year": 2021,
+      "actual": 1182234346,
+      "benchmark": 1164666375,
+      "population_growth": 0.0149,
+      "inflation_growth": 0.0143,
+      "allowed_growth": 0.0292
+    },
+    {
+      "year": 2022,
+      "actual": 1215219786,
+      "benchmark": 1181212527,
+      "population_growth": 0.0087,
+      "inflation_growth": 0.0055,
+      "allowed_growth": 0.0142
+    },
+    {
+      "year": 2023,
+      "actual": 1252386311,
+      "benchmark": 1264903205,
+      "population_growth": 0.013,
+      "inflation_growth": 0.0579,
+      "allowed_growth": 0.0709
+    },
+    {
+      "year": 2024,
+      "actual": 1371444118,
+      "benchmark": 1407063904,
+      "population_growth": 0.0189,
+      "inflation_growth": 0.0935,
+      "allowed_growth": 0.1124
+    },
+    {
+      "year": 2025,
+      "actual": 1438909803,
+      "benchmark": 1483476634,
+      "population_growth": 0.0207,
+      "inflation_growth": 0.0336,
+      "allowed_growth": 0.0543
+    }
+  ]
+}

@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NC Property Tax Pressure Index — Mecklenburg County</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    background: #f4f4f4;
+    color: #222;
+  }
+  #app {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    grid-template-rows: 1fr auto;
+    height: 100vh;
+  }
+  .side-panel {
+    grid-row: 1 / span 2;
+    background: rgba(255,255,255,0.97);
+    padding: 26px 24px;
+    box-shadow: 3px 0 18px rgba(0,0,0,0.12);
+    overflow-y: auto;
+  }
+  .map-wrap { position: relative; height: 100%; }
+  #map { position: absolute; inset: 0; }
+  .main-title { font-size: 30px; font-weight: 900; letter-spacing: -0.6px; margin: 0 0 8px; line-height: 1.05; }
+  .subtitle { font-size: 15px; line-height: 1.4; color: #444; margin: 0 0 20px; }
+  .rule { height: 1px; background: #cfcfcf; margin: 18px 0 20px; }
+  .place-name { font-size: 26px; font-weight: 900; margin: 4px 0 14px; }
+  .score-box {
+    width: 100%; height: 88px; display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 44px; font-weight: 900; margin: 0 0 18px;
+    border-radius: 4px;
+  }
+  .panel-sentence { font-size: 16px; line-height: 1.45; margin: 0 0 20px; }
+  .panel-sentence strong { font-weight: 900; }
+  .section-subhead { font-size: 20px; font-weight: 900; margin: 18px 0 6px; }
+  .outline-box {
+    width: 100%; min-height: 58px; display: flex; align-items: center; justify-content: center;
+    border: 2px solid #222; color: #222; font-size: 26px; font-weight: 900; text-align: center;
+    padding: 10px 14px;
+  }
+  .detail-line { font-size: 14px; color: #555; margin: 4px 0 0; }
+  .section-card {
+    margin-top: 10px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; overflow: hidden;
+  }
+  .section-card summary {
+    cursor: pointer; font-size: 16px; font-weight: 800; padding: 14px 16px; background: #fafafa;
+    list-style: none;
+  }
+  .section-card summary::-webkit-details-marker { display: none; }
+  .section-card summary:after { content: " ▾"; color: #888; }
+  .section-card[open] summary:after { content: " ▴"; }
+  .section-card .body { padding: 6px 16px 18px; }
+  .chart-note { color: #555; font-size: 13px; margin: 6px 0 10px; line-height: 1.4; }
+  #benchmarkChart { width: 100%; }
+  .legend-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; margin-right: 14px; }
+  .legend-chip .sw { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
+  .sankey-tooltip {
+    position: absolute; background: rgba(20,20,20,0.92); color: #fff; padding: 6px 9px;
+    border-radius: 4px; font-size: 12px; pointer-events: none; z-index: 1000; display: none;
+  }
+  .footer-note { font-size: 12px; color: #888; margin-top: 16px; line-height: 1.45; }
+  @media (max-width: 850px) {
+    #app { grid-template-columns: 1fr; grid-template-rows: auto 55vh auto; height: auto; }
+    .side-panel { box-shadow: none; overflow: visible; }
+    .map-wrap { height: 55vh; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="side-panel">
+    <div class="main-title">NC Property Tax Pressure Index</div>
+    <div class="subtitle">How property tax revenue grew relative to inflation and population from 2016 to 2025.</div>
+    <div class="rule"></div>
+
+    <div class="place-name" id="placeName">Mecklenburg County</div>
+    <div class="score-box" id="scoreBox" style="background:#54B978;">0</div>
+    <p class="panel-sentence" id="sentence"></p>
+
+    <div class="section-subhead">Largest revenue source</div>
+    <div class="outline-box" id="topRevenue">—</div>
+    <div class="detail-line" id="topRevenueDetail"></div>
+
+    <div class="section-subhead">Largest spending area</div>
+    <div class="outline-box" id="topSpending">—</div>
+    <div class="detail-line" id="topSpendingDetail"></div>
+
+    <details class="section-card">
+      <summary>Revenue &amp; spending flow</summary>
+      <div class="body">
+        <p class="chart-note">Total nominal revenue by source (left) flows into a shared General Fund pool, then out to spending by area (right). The chart does not imply any revenue source funded any specific spending area.</p>
+        <div style="position:relative;">
+          <div class="sankey-tooltip" id="sankeyTip"></div>
+          <svg id="sankey" viewBox="0 0 900 460" width="100%"></svg>
+        </div>
+      </div>
+    </details>
+
+    <details class="section-card">
+      <summary>Benchmark by year</summary>
+      <div class="body">
+        <p class="chart-note">Annual property tax collections vs. the inflation + population benchmark (millions of dollars).</p>
+        <svg id="benchmarkChart" viewBox="0 0 900 320" preserveAspectRatio="xMidYMid meet"></svg>
+        <div style="margin-top:8px;">
+          <span class="legend-chip"><span class="sw" style="background:#315C8C;"></span> Actual</span>
+          <span class="legend-chip"><span class="sw" style="background:#9AA7B5;"></span> Benchmark</span>
+        </div>
+      </div>
+    </details>
+
+    <p class="footer-note">County-level index for demonstration. Based on Mecklenburg County property tax revenue, county population, and CPI-U, 2016–2025.</p>
+  </div>
+
+  <div class="map-wrap">
+    <div id="map"></div>
+  </div>
+</div>
+
+<script>
+const SCORE_COLORS = {
+  "0": "#54B978", "1": "#FFC640", "2": "#F58B4B", "3": "#F05252"
+};
+const BUCKET_COLORS = {
+  "Property taxes":"#315C8C","Other taxes":"#7BA9D6","Sales taxes":"#4F8C5E",
+  "Sales & services":"#9DC183","Intergovernmental":"#D9A441","Debt proceeds":"#9A6FB0",
+  "Education":"#315C8C","Debt service":"#9A6FB0","Human services":"#D9A441",
+  "General government":"#8A8A8A","Public safety":"#B64F4F","Utilities":"#4E9A9A",
+  "Transportation":"#C97842","Other":"#6F6F6F"
+};
+
+const fmtMoney = (x) => {
+  const sign = x < 0 ? "-$" : "$";
+  const a = Math.abs(x);
+  if (a >= 1e9) return sign + (a/1e9).toFixed(1) + "B";
+  if (a >= 1e6) return sign + (a/1e6).toFixed(1) + "M";
+  if (a >= 1e3) return sign + (a/1e3).toFixed(1) + "K";
+  return sign + Math.round(a).toLocaleString();
+};
+const pctSigned = (x) => (x > 0 ? "+" : "") + x.toFixed(1) + "%";
+const pctAbs = (x) => Math.abs(x).toFixed(1) + "%";
+const moreLess = (x) => x < 0 ? "less" : "more";
+
+let DATA = null;
+
+async function loadData() {
+  const [j, gj] = await Promise.all([
+    fetch("data/mecklenburg.json").then(r => r.json()),
+    fetch("data/mecklenburg.geojson").then(r => r.json())
+  ]);
+  DATA = j;
+  renderPanel(j);
+  renderMap(gj);
+  renderSankey(j);
+  renderBenchmarkChart(j);
+}
+
+function renderPanel(d) {
+  document.getElementById("placeName").textContent = d.label + " — " + d.period;
+  const scoreBox = document.getElementById("scoreBox");
+  const scoreText = d.score == null ? "Data not reported" : String(d.score);
+  scoreBox.textContent = scoreText;
+  scoreBox.style.background = d.score == null ? "#BDBDBD" : SCORE_COLORS[String(d.score)];
+  scoreBox.style.color = d.score == null ? "#333" : "#fff";
+  if (d.score == null) scoreBox.style.fontSize = "20px";
+
+  const sent = document.getElementById("sentence");
+  sent.innerHTML = `${d.label} collected <strong>${pctAbs(d.difference_pct)} ${moreLess(d.difference_dollars)}</strong> property tax revenue than it would have under the inflation plus population benchmark, or <strong>${fmtMoney(Math.abs(d.difference_dollars))} ${moreLess(d.difference_dollars)}</strong>.`;
+
+  const rev = d.revenue[0], spd = d.spending[0];
+  document.getElementById("topRevenue").textContent = rev.area;
+  document.getElementById("topRevenueDetail").textContent = `${fmtMoney(rev.total)}, or ${(rev.share*100).toFixed(1)}% of revenue`;
+  document.getElementById("topSpending").textContent = spd.area;
+  document.getElementById("topSpendingDetail").textContent = `${fmtMoney(spd.total)}, or ${(spd.share*100).toFixed(1)}% of spending`;
+}
+
+function renderMap(gj) {
+  const map = L.map("map", { scrollWheelZoom: true }).setView([35.28, -80.83], 10);
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+    attribution: "&copy; OpenStreetMap &copy; CARTO"
+  }).addTo(map);
+
+  const d = DATA;
+  const color = d.score == null ? "#BDBDBD" : SCORE_COLORS[String(d.score)];
+  const layer = L.geoJSON(gj, {
+    style: () => ({ fillColor: color, weight: 1.5, opacity: 1, color: "#222", fillOpacity: 0.75 })
+  }).addTo(map);
+  layer.bindTooltip(
+    `<strong>${d.label}</strong><br/>Score: ${d.score==null?"Data not reported":d.score}<br/>Percent gap: ${pctSigned(d.difference_pct)}<br/>Amount gap: ${fmtMoney(d.difference_dollars)}`
+  );
+  map.fitBounds(layer.getBounds(), { padding: [20, 20] });
+}
+
+function renderSankey(d) {
+  const nodes = [];
+  const gfIndex = d.revenue.length; // General Fund sits after all revenue nodes
+  const gfName = "General Fund";
+  d.revenue.forEach(r => nodes.push({ name: r.area }));
+  nodes.push({ name: gfName });
+  d.spending.forEach(s => nodes.push({ name: s.area }));
+
+  const links = [];
+  d.revenue.forEach((r, i) => links.push({ source: i, target: gfIndex, value: r.total }));
+  d.spending.forEach((s, j) => links.push({ source: gfIndex, target: gfIndex + 1 + j, value: s.total }));
+
+  const svg = d3.select("#sankey");
+  const margin = { top: 10, right: 130, bottom: 10, left: 130 };
+  const width = 900 - margin.left - margin.right;
+  const height = 460 - margin.top - margin.bottom;
+
+  const sankey = d3.sankey()
+    .nodeWidth(16).nodePadding(18)
+    .extent([[margin.left, margin.top], [width + margin.left, height + margin.top]]);
+
+  const graph = sankey({ nodes: nodes.map(n => Object.assign({}, n)), links: links.map(l => Object.assign({}, l)) });
+
+  const color = (name) => name === "General Fund" ? "#888888" : (BUCKET_COLORS[name] || "#6F6F6F");
+
+  const tooltip = d3.select("#sankeyTip");
+
+  const link = svg.append("g").attr("fill", "none").attr("stroke-opacity", 0.4)
+    .selectAll("path").data(graph.links).join("path")
+    .attr("d", d3.sankeyLinkHorizontal())
+    .attr("stroke", d => color(d.source.name))
+    .attr("stroke-width", d => Math.max(1, d.width))
+    .on("mousemove", function(event, l) {
+      tooltip.style("display","block")
+        .style("left", (event.pageX + 14) + "px")
+        .style("top", (event.pageY - 10) + "px")
+        .html(`${l.source.name} → ${l.target.name}: ${fmtMoney(l.value)}`);
+    })
+    .on("mouseout", () => tooltip.style("display","none"));
+
+  const node = svg.append("g").selectAll("g").data(graph.nodes).join("g");
+  node.append("rect")
+    .attr("x", d => d.x0).attr("y", d => d.y0)
+    .attr("height", d => d.y1 - d.y0).attr("width", d => d.x1 - d.x0)
+    .attr("fill", d => color(d.name))
+    .attr("rx", 2)
+    .on("mousemove", function(event, n) {
+      tooltip.style("display","block")
+        .style("left", (event.pageX + 14) + "px")
+        .style("top", (event.pageY - 10) + "px")
+        .html(`${n.name}: ${fmtMoney(n.value)}`);
+    })
+    .on("mouseout", () => tooltip.style("display","none"));
+  node.append("text")
+    .attr("x", d => d.x0 < width / 2 + margin.left ? d.x0 - 6 : d.x1 + 6)
+    .attr("y", d => (d.y0 + d.y1) / 2)
+    .attr("dy", "0.35em")
+    .attr("text-anchor", d => d.x0 < width / 2 + margin.left ? "end" : "start")
+    .attr("font-size", 12)
+    .text(d => d.name);
+}
+
+function renderBenchmarkChart(d) {
+  const svg = d3.select("#benchmarkChart");
+  const margin = { top: 20, right: 20, bottom: 40, left: 60 };
+  const width = 900 - margin.left - margin.right;
+  const height = 320 - margin.top - margin.bottom;
+  const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+  const rows = d.benchmark_by_year;
+  const x = d3.scaleBand().domain(rows.map(r => r.year)).range([0, width]).padding(0.2);
+  const yMax = d3.max(rows, r => Math.max(r.actual, r.benchmark)) / 1e6;
+  const y = d3.scaleLinear().domain([0, Math.ceil(yMax * 1.1)]).range([height, 0]);
+
+  g.append("g").call(d3.axisLeft(y).ticks(6));
+  g.append("g").attr("transform", `translate(0,${height})`).call(d3.axisBottom(x).tickFormat(d3.format("d")));
+
+  g.selectAll(".bench").data(rows).join("rect")
+    .attr("x", d => x(d.year) + x.bandwidth()/2 + 2)
+    .attr("width", x.bandwidth()/2 - 3)
+    .attr("y", d => y(d.benchmark/1e6))
+    .attr("height", d => height - y(d.benchmark/1e6))
+    .attr("fill", "#9AA7B5");
+
+  g.selectAll(".act").data(rows).join("rect")
+    .attr("x", d => x(d.year) - 2)
+    .attr("width", x.bandwidth()/2 - 3)
+    .attr("y", d => y(d.actual/1e6))
+    .attr("height", d => height - y(d.actual/1e6))
+    .attr("fill", "#315C8C");
+}
+
+loadData();
+</script>
+</body>
+</html>
