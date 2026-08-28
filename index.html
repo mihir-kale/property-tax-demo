@@ -129,7 +129,7 @@
         <select id="countySelect" aria-label="Select county">
           <option value="" selected>--Select a County--</option>
           <option value="mecklenburg">Mecklenburg County</option>
-          <option value="halifax" disabled>Halifax County (coming soon)</option>
+          <option value="halifax">Halifax County</option>
         </select>
         <div class="grade-badge" id="gradeBadge" title=""></div>
       </div>
@@ -145,7 +145,7 @@
         <summary>County Financial Data</summary>
         <div class="body">
           <p class="chart-note">County-level constants behind the per-property benchmark (FY figures).</p>
-          <p class="detail-item"><b>Actual county rate:</b> <span id="dActualRate"></span> per $100 (FY2025&ndash;26 official Mecklenburg county rate).</p>
+          <p class="detail-item"><b>Actual county rate:</b> <span id="dActualRate"></span> per $100 (FY2025&ndash;26 <span id="rateCtx">official county rate</span>).</p>
           <p class="detail-item"><b>Scenario rate:</b> <span id="dScenarioRate2"></span> per $100 — the inflation+population benchmark levy capped at the actual levy, divided by the taxable base.</p>
           <p class="detail-item"><b>Actual county levy:</b> <span id="dLActual"></span> (FY2025&ndash;26).</p>
           <p class="detail-item"><b>County taxable base:</b> <span id="dX"></span> (FY2025&ndash;26 assessed valuation).</p>
@@ -157,9 +157,9 @@
             <thead><tr><th>Transition into year</th><th>Inflation</th><th>Population</th><th>Growth</th><th>Benchmark levy</th></tr></thead>
             <tbody id="trBody"></tbody>
           </table>
-          <p class="note">Inflation is the U.S. CPI-U annual average (BLS). Population is Mecklenburg annual resident estimates (U.S. Census). The transition into year T uses that year&rsquo;s inflation and population change.</p>
+          <p class="note">Inflation is the U.S. CPI-U annual average (BLS). Population is <span id="popCtx">Mecklenburg</span> annual resident estimates (U.S. Census). The transition into year T uses that year&rsquo;s inflation and population change.</p>
           <p class="note"><b>Assumptions:</b> the ceiling compounds from the 2016 baseline; a year below the ceiling does not ratchet it down; no separate new-construction allowance or overrides. The scenario never prescribes an increase — if the actual levy is already below the ceiling, the actual rate is retained.</p>
-          <p class="sources"><b>Sources:</b> Mecklenburg county tax rate (<a href="#" data-src="rates">tax.mecknc.gov</a>), county rate announcement (<a href="#" data-src="rate_news">pi.mecknc.gov</a>), NCDOR levy/valuation reports (<a href="#" data-src="ncdor_levy">ncdor.gov</a>), NC OneMap parcels (<a href="#" data-src="parcels">nconemap.gov</a>), U.S. Census population estimates (<a href="#" data-src="census_pop">census.gov</a>), BLS CPI-U (<a href="#" data-src="bls_cpi">bls.gov</a>).</p>
+          <p class="sources" id="srcPara"><b>Sources:</b>&nbsp;</p>
         </div>
       </details>
       <details class="section-card" open>
@@ -234,15 +234,26 @@ const NC_STFIPS = "37";
 // Registrar of selectable counties. `fips` is the full 5-digit STCOFIPS. Counties
 // without a data file render as neutral outlines and cannot be searched yet.
 const COUNTIES = {
-  "mecklenburg": { label: "Mecklenburg County", json: "data/mecklenburg.json", geo: "data/mecklenburg.geojson", benchmark: "data/mecklenburg_benchmark.json", fips: "37119", enabled: true }
+  "mecklenburg": { label: "Mecklenburg County", json: "data/mecklenburg.json", geo: "data/mecklenburg.geojson", benchmark: "data/mecklenburg_benchmark.json", fips: "37119", enabled: true },
+  "halifax": { label: "Halifax County", json: "data/halifax.json", geo: "data/halifax.geojson", benchmark: "data/halifax_benchmark.json", fips: "37083", enabled: true }
 };
-
 const fmtMoney = (x) => "$" + Math.abs(x).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + (x < 0 ? " less" : "");
 const pctSigned = (x) => (x > 0 ? "+" : "") + x.toFixed(1) + "%";
 const fmtBig = (x) => (x / 1e6).toLocaleString(undefined, { maximumFractionDigits: 1 }) + "M";
 
-let DATA = null;      // selected county presentation json (mecklenburg.json)
-let COUNTY = null;    // selected county benchmark (mecklenburg_benchmark.json)
+const SRC_LABELS = {
+  rates: "county tax rate",
+  rate_news: "rate announcement",
+  ncdor_levy: "NCDOR levy/valuation reports",
+  parcels: "NC OneMap parcels",
+  census_pop: "U.S. Census population estimates",
+  bls_cpi: "BLS CPI-U",
+  hb1089: "HB 1089"
+};
+const hostOf = (url) => { try { return (new URL(url)).hostname.replace(/^www\./, ""); } catch (e) { return url; } };
+
+let DATA = null;      // selected county presentation json (e.g. mecklenburg.json)
+let COUNTY = null;    // selected county benchmark (e.g. mecklenburg_benchmark.json)
 let COUNTY_DATA = {}; // fips -> {label, score, diffPct, diffDollars} for counties with data
 let NC_GEO = null;    // nc_counties.geojson (all NC counties)
 let SELECTED = null;  // key into COUNTIES currently selected, or null
@@ -253,18 +264,19 @@ const byId = (id) => document.getElementById(id);
 
 // ---- data loading ----
 async function loadAll() {
-  const [nc, mj] = await Promise.all([
+  const enabledKeys = Object.keys(COUNTIES).filter(k => COUNTIES[k].enabled);
+  const [nc, ...jsonArr] = await Promise.all([
     fetch("data/nc_counties.geojson").then(r => r.json()).catch(e => { console.error("nc counties load failed", e); return { type: "FeatureCollection", features: [] }; }),
-    fetch(COUNTIES.mecklenburg.json).then(r => r.json()).catch(e => { console.error("county preload failed", e); return null; })
+    ...enabledKeys.map(k => fetch(COUNTIES[k].json).then(r => r.json()).catch(e => { console.error("county preload failed for " + k, e); return null; }))
   ]);
   NC_GEO = nc;
-  if (mj) refreshCountyData(COUNTIES.mecklenburg.fips, mj); // color Mecklenburg on load
+  enabledKeys.forEach((k, i) => { if (jsonArr[i]) refreshCountyData(COUNTIES[k].fips, jsonArr[i]); }); // color counties on load
   renderMap();
   recolorMap();
 }
 
-// Store a county's presentation data for map coloring (Mecklenburg now,
-// Halifax next). `d` is a mecklenburg.json-style object.
+// Store a county's presentation data for map coloring. `d` is a
+// mecklenburg.json-style object.
 function refreshCountyData(fips, d) {
   if (!d) return;
   COUNTY_DATA[fips] = {
@@ -287,6 +299,7 @@ async function selectCounty(key) {
     setStatus("");
     byId("cands").innerHTML = "";
     byId("gradeBadge").classList.remove("show");
+    updateCountyLabels();
     if (MAP) MAP.fitBounds([[33.8, -84.4], [36.6, -75.4]], { padding: [10, 10] });
     recolorMap();
     return;
@@ -304,6 +317,7 @@ async function selectCounty(key) {
     renderSankey(j);
     fillDetails();
     setCountySearchEnabled(true);
+    updateCountyLabels();
     setStatus("");
     recolorMap();
     zoomToCounty(c.fips);
@@ -451,6 +465,27 @@ function fillDetails() {
 
 function setStatus(msg) { byId("status").textContent = msg || ""; }
 
+// Rebuild the county-specific labels in the County Financial Data collapsible
+// (rate context, population source, sources links) for the selected county.
+function updateCountyLabels() {
+  const c = SELECTED ? COUNTIES[SELECTED] : null;
+  const nm = c ? c.label : "this county";
+  byId("rateCtx").textContent = c ? "official " + nm + " rate" : "official county rate";
+  byId("popCtx").textContent = c ? nm : "this county";
+  const src = c && COUNTY && COUNTY.sources ? COUNTY.sources : {};
+  const items = Object.keys(SRC_LABELS)
+    .filter(k => src[k])
+    .map(k => `${SRC_LABELS[k]} (<a href="#" data-src="${k}">${hostOf(src[k])}</a>)`);
+  byId("srcPara").innerHTML = "<b>Sources:</b> " + (c && items.length ? items.join(", ") + "." : "—");
+  bindSourceLinks();
+}
+
+function bindSourceLinks() {
+  document.querySelectorAll("a[data-src]").forEach(a => {
+    a.addEventListener("click", e => { e.preventDefault(); const k = a.getAttribute("data-src"); if (COUNTY && COUNTY.sources[k]) window.open(COUNTY.sources[k], "_blank"); });
+  });
+}
+
 async function searchAddress(query) {
   const q = (query || "").trim();
   if (!q) { setStatus("Enter an address."); return; }
@@ -553,12 +588,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const run = () => searchAddress(byId("addrInput").value);
   byId("searchBtn").addEventListener("click", run);
   byId("addrInput").addEventListener("keydown", e => { if (e.key === "Enter") run(); });
-  document.querySelectorAll("a[data-src]").forEach(a => {
-    a.addEventListener("click", e => { e.preventDefault(); const k = a.getAttribute("data-src"); if (COUNTY.sources[k]) window.open(COUNTY.sources[k], "_blank"); });
-  });
   byId("countySelect").addEventListener("change", (e) => {
     selectCounty(e.target.value || null);
   });
+  updateCountyLabels();
   loadAll();
 });
 </script>

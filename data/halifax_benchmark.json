@@ -1,0 +1,35 @@
+{
+  "county": "Halifax County, NC",
+  "fips": "083",
+  "scope_year": 2025,
+  "baseline_year": 2016,
+  "r_actual": 0.7000,
+  "r_2016": 0.7762,
+  "x": 5410701109.0,
+  "l_actual": 37908378.0,
+  "l_2016": 27774822.0,
+  "b_endpoint": 34300694.9,
+  "l_scenario": 34300694.9,
+  "r_scenario": 0.6339,
+  "rate_reconciliation_pct": -0.0883,
+  "transitions": [
+    { "to_year": 2017, "inflation": 0.02130355, "population": -0.00936040, "growth": 0.01194315, "benchmark_levy": 28106540.87 },
+    { "to_year": 2018, "inflation": 0.02442477, "population": -0.01233221, "growth": 0.01209256, "benchmark_levy": 28446420.90 },
+    { "to_year": 2019, "inflation": 0.01811977, "population": -0.01226921, "growth": 0.00585056, "benchmark_levy": 28612848.39 },
+    { "to_year": 2020, "inflation": 0.01233684, "population": -0.01188241, "growth": 0.00045443, "benchmark_levy": 28625850.93 },
+    { "to_year": 2021, "inflation": 0.04698023, "population": -0.00274788, "growth": 0.04423235, "benchmark_levy": 29892039.58 },
+    { "to_year": 2022, "inflation": 0.08002731, "population": -0.01410873, "growth": 0.06591858, "benchmark_levy": 31862480.39 },
+    { "to_year": 2023, "inflation": 0.04116451, "population": -0.01075924, "growth": 0.03040527, "benchmark_levy": 32831267.70 },
+    { "to_year": 2024, "inflation": 0.02949439, "population": -0.00174190, "growth": 0.02775249, "benchmark_levy": 33742417.13 },
+    { "to_year": 2025, "inflation": 0.02631269, "population": -0.00976741, "growth": 0.01654528, "benchmark_levy": 34300694.87 }
+  ],
+  "mapping_note": "The transition into year T uses that year's CPI inflation change (CPI-U annual average, T-1 to T) and Halifax County resident population growth from 2020-base vintage Census estimates (T-1 to T). Nine transitions compound the 2016 baseline levy to the 2025 benchmark ceiling.",
+  "sources": {
+    "rates": "https://www.ncdor.gov/news/local-government/reports-statistics-property-tax-rates",
+    "ncdor_levy": "https://www.ncdor.gov/lg042025-2026xlsx/open",
+    "parcels": "https://services.nconemap.gov/secure/rest/services/NC1Map_Parcels/MapServer/0",
+    "census_pop": "https://www.census.gov/programs-surveys/popest.html",
+    "bls_cpi": "https://www.bls.gov/cpi/",
+    "hb1089": "https://www.ncleg.gov/EnactedLegislation/SessionLaws/HTML/2025-2026/SL2026-5.html"
+  }
+}

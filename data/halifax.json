@@ -1,0 +1,162 @@
+{
+  "place": "Halifax",
+  "label": "Halifax County",
+  "geography": "County",
+  "period": "2016-2025",
+  "score": 3,
+  "difference_dollars": 86689946,
+  "difference_pct": 28.76,
+  "actual_property_tax_total": 388076638,
+  "benchmark_property_tax_total": 301386692,
+  "revenue": [
+    {
+      "area": "Property taxes",
+      "total": 388076638,
+      "share": 0.407
+    },
+    {
+      "area": "Intergovernmental",
+      "total": 241314166,
+      "share": 0.2531
+    },
+    {
+      "area": "Sales & services",
+      "total": 136121591,
+      "share": 0.1428
+    },
+    {
+      "area": "Sales taxes",
+      "total": 114742760,
+      "share": 0.1203
+    },
+    {
+      "area": "Other",
+      "total": 35234973,
+      "share": 0.037
+    },
+    {
+      "area": "Debt proceeds",
+      "total": 22727065,
+      "share": 0.0238
+    },
+    {
+      "area": "Other taxes",
+      "total": 15330698,
+      "share": 0.0161
+    }
+  ],
+  "spending": [
+    {
+      "area": "Education",
+      "total": 214896015,
+      "share": 0.2406
+    },
+    {
+      "area": "Human services",
+      "total": 208684810,
+      "share": 0.2336
+    },
+    {
+      "area": "Public safety",
+      "total": 202843403,
+      "share": 0.2271
+    },
+    {
+      "area": "Other",
+      "total": 124990466,
+      "share": 0.1399
+    },
+    {
+      "area": "General government",
+      "total": 94310267,
+      "share": 0.1056
+    },
+    {
+      "area": "Debt service",
+      "total": 47488080,
+      "share": 0.0532
+    }
+  ],
+  "benchmark_by_year": [
+    {
+      "year": 2016,
+      "actual": 29288453,
+      "benchmark": 29288453,
+      "population_growth": 0,
+      "inflation_growth": 0,
+      "allowed_growth": 0
+    },
+    {
+      "year": 2017,
+      "actual": 32429935,
+      "benchmark": 28735161,
+      "population_growth": -0.0176,
+      "inflation_growth": -0.0013,
+      "allowed_growth": -0.0189
+    },
+    {
+      "year": 2018,
+      "actual": 34326757,
+      "benchmark": 28741488,
+      "population_growth": -0.0066,
+      "inflation_growth": 0.0068,
+      "allowed_growth": 0.0002
+    },
+    {
+      "year": 2019,
+      "actual": 34810631,
+      "benchmark": 28985254,
+      "population_growth": -0.0072,
+      "inflation_growth": 0.0156,
+      "allowed_growth": 0.0085
+    },
+    {
+      "year": 2020,
+      "actual": 35504070,
+      "benchmark": 29461142,
+      "population_growth": -0.0124,
+      "inflation_growth": 0.0288,
+      "allowed_growth": 0.0164
+    },
+    {
+      "year": 2021,
+      "actual": 39270221,
+      "benchmark": 29580327,
+      "population_growth": -0.0102,
+      "inflation_growth": 0.0143,
+      "allowed_growth": 0.004
+    },
+    {
+      "year": 2022,
+      "actual": 44379691,
+      "benchmark": 29212334,
+      "population_growth": -0.018,
+      "inflation_growth": 0.0055,
+      "allowed_growth": -0.0124
+    },
+    {
+      "year": 2023,
+      "actual": 45502302,
+      "benchmark": 30569675,
+      "population_growth": -0.0114,
+      "inflation_growth": 0.0579,
+      "allowed_growth": 0.0465
+    },
+    {
+      "year": 2024,
+      "actual": 46794729,
+      "benchmark": 33045376,
+      "population_growth": -0.0125,
+      "inflation_growth": 0.0935,
+      "allowed_growth": 0.081
+    },
+    {
+      "year": 2025,
+      "actual": 45769849,
+      "benchmark": 33767481,
+      "population_growth": -0.0118,
+      "inflation_growth": 0.0336,
+      "allowed_growth": 0.0219
+    }
+  ]
+}
