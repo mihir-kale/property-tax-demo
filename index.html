@@ -3,124 +3,259 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>NC Property Tax Pressure Index — Mecklenburg County</title>
+<title>Mecklenburg Property Tax · NC</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
+<script src="calc.js"></script>
 <style>
   * { box-sizing: border-box; }
-  html, body {
-    height: 100%;
-    margin: 0;
-    font-family: Arial, Helvetica, sans-serif;
-    background: #f4f4f4;
-    color: #222;
+  html, body { height: 100%; margin: 0; font-family: Arial, Helvetica, sans-serif; background: #f4f4f4; color: #222; }
+  #header {
+    display: flex; align-items: center; gap: 18px; padding: 12px 20px;
+    background: #1f2a35; color: #fff; flex-wrap: wrap;
   }
+  #header .brand { font-size: 18px; font-weight: 900; letter-spacing: -0.2px; margin-right: auto; }
+  #header .brand .sub { display: block; font-size: 11px; font-weight: 600; color: #9fb2c4; letter-spacing: .5px; }
+  .seg { display: flex; background: #2b3a48; border-radius: 8px; padding: 3px; gap: 3px; }
+  .seg button {
+    border: none; background: transparent; color: #c6d2dc; font-weight: 800; font-size: 13px;
+    padding: 8px 18px; border-radius: 6px; cursor: pointer; letter-spacing: .3px;
+  }
+  .seg button.active { background: #315C8C; color: #fff; }
   #app {
     display: grid;
-    grid-template-columns: 380px 1fr;
-    grid-template-rows: 1fr auto;
-    height: 100vh;
+    grid-template-columns: min(33%, 400px) 1fr;
+    grid-template-rows: 1fr;
+    height: calc(100vh - 60px);
+    min-height: 480px;
   }
-  .side-panel {
-    grid-row: 1 / span 2;
+  #leftPanel {
     background: rgba(255,255,255,0.97);
-    padding: 26px 24px;
-    box-shadow: 3px 0 18px rgba(0,0,0,0.12);
+    border-right: 1px solid #d9d9d9;
+    padding: 18px 18px 24px;
     overflow-y: auto;
+    min-width: 0;
   }
-  .map-wrap { position: relative; height: 100%; }
-  #map { position: absolute; inset: 0; }
-  .main-title { font-size: 30px; font-weight: 900; letter-spacing: -0.6px; margin: 0 0 8px; line-height: 1.05; }
-  .subtitle { font-size: 15px; line-height: 1.4; color: #444; margin: 0 0 20px; }
-  .rule { height: 1px; background: #cfcfcf; margin: 18px 0 20px; }
-  .place-name { font-size: 26px; font-weight: 900; margin: 4px 0 14px; }
+  #rightArea { position: relative; overflow-y: auto; background: #eef0f2; }
+
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* County left panel */
+  #countyPanel .place-name { font-size: 24px; font-weight: 900; margin: 4px 0 10px; }
   .score-box {
-    width: 100%; height: 88px; display: flex; align-items: center; justify-content: center;
-    color: #fff; font-size: 44px; font-weight: 900; margin: 0 0 18px;
-    border-radius: 4px;
+    width: 100%; height: 72px; display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 36px; font-weight: 900; margin: 0 0 12px; border-radius: 4px;
   }
-  .panel-sentence { font-size: 16px; line-height: 1.45; margin: 0 0 20px; }
+  .panel-sentence { font-size: 14px; line-height: 1.45; margin: 0 0 16px; }
   .panel-sentence strong { font-weight: 900; }
-  .section-subhead { font-size: 20px; font-weight: 900; margin: 18px 0 6px; }
-  .outline-box {
-    width: 100%; min-height: 58px; display: flex; align-items: center; justify-content: center;
-    border: 2px solid #222; color: #222; font-size: 26px; font-weight: 900; text-align: center;
-    padding: 10px 14px;
-  }
-  .detail-line { font-size: 14px; color: #555; margin: 4px 0 0; }
-  .section-card {
-    margin-top: 10px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; overflow: hidden;
-  }
-  .section-card summary {
-    cursor: pointer; font-size: 16px; font-weight: 800; padding: 14px 16px; background: #fafafa;
-    list-style: none;
-  }
+  .section-card { margin-top: 12px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; overflow: hidden; }
+  .section-card summary { cursor: pointer; font-size: 15px; font-weight: 800; padding: 12px 14px; background: #fafafa; list-style: none; }
   .section-card summary::-webkit-details-marker { display: none; }
   .section-card summary:after { content: " ▾"; color: #888; }
   .section-card[open] summary:after { content: " ▴"; }
-  .section-card .body { padding: 6px 16px 18px; }
-  .chart-note { color: #555; font-size: 13px; margin: 6px 0 10px; line-height: 1.4; }
-  #benchmarkChart { width: 100%; }
-  .legend-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; margin-right: 14px; }
+  .section-card .body { padding: 4px 14px 14px; }
+  .chart-note { color: #666; font-size: 12px; margin: 4px 0 8px; line-height: 1.35; }
+  #sankey { width: 100%; }
+  .legend-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; margin-right: 12px; }
   .legend-chip .sw { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
   .sankey-tooltip {
-    position: absolute; background: rgba(20,20,20,0.92); color: #fff; padding: 6px 9px;
+    position: absolute; background: rgba(20,20,20,0.92); color: #fff; padding: 5px 8px;
     border-radius: 4px; font-size: 12px; pointer-events: none; z-index: 1000; display: none;
   }
-  .footer-note { font-size: 12px; color: #888; margin-top: 16px; line-height: 1.45; }
-  .demo-link { display: inline-block; margin-top: 16px; font-size: 14px; font-weight: 700; color: #fff;
-    background: #315C8C; padding: 10px 14px; border-radius: 6px; text-decoration: none; }
-  .demo-link:hover { background: #274a70; }
-  @media (max-width: 850px) {
-    #app { grid-template-columns: 1fr; grid-template-rows: auto 55vh auto; height: auto; }
-    .side-panel { box-shadow: none; overflow: visible; }
-    .map-wrap { height: 55vh; }
+  .outline-note { font-size: 12px; color: #888; margin-top: 10px; line-height: 1.45; }
+
+  /* My Bill left panel */
+  #billPanel h2 { font-size: 16px; font-weight: 900; margin: 0 0 12px; }
+  .search-row { display: flex; gap: 8px; }
+  #addrInput { flex: 1; font-size: 15px; padding: 11px 12px; border: 1px solid #cfcfcf; border-radius: 6px; min-width: 0; }
+  #searchBtn { font-size: 15px; font-weight: 700; padding: 11px 16px; border: none; border-radius: 6px; background: #315C8C; color: #fff; cursor: pointer; white-space: nowrap; }
+  #searchBtn:disabled { background: #9AA7B5; cursor: default; }
+  .hint { font-size: 12.5px; color: #888; margin: 8px 0 0; line-height: 1.4; }
+  #status { font-size: 13px; color: #555; margin: 12px 0 0; min-height: 18px; }
+  .cands { list-style: none; margin: 10px 0 0; padding: 0; }
+  .cands li { width: 100%; text-align: left; border: 1px solid #e0e0e0; border-radius: 6px; background: #fafafa; padding: 9px 11px; margin-bottom: 7px; cursor: pointer; font-size: 13px; }
+  .cands li:hover { border-color: #315C8C; background: #eef3fa; }
+  .cands li .pid { color: #777; font-size: 12px; }
+  .cands li .val { color: #315C8C; font-weight: 700; }
+  #nores.hidden, #billResults.hidden, #countyPanel.hidden, .hidden { display: none !important; }
+  .prop-line { font-size: 13.5px; color: #444; margin: 0 0 3px; }
+  .prop-line b { color: #222; }
+  .note { font-size: 12px; color: #888; line-height: 1.45; margin: 8px 0 0; }
+  .callout { background: #eef4ee; border: 1px solid #cddccd; border-radius: 8px; padding: 13px 15px; font-size: 13.5px; line-height: 1.5; color: #2c4a2c; margin-top: 16px; }
+  .callout b { color: #1f3a1f; }
+
+  /* My Bill right panel (analysis) */
+  #billResults { padding: 22px 24px 40px; max-width: 940px; margin: 0 auto; }
+  #billResults .card { background: #fff; border: 1px solid #e2e2e2; border-radius: 10px; padding: 18px 20px; margin-bottom: 16px; }
+  #billResults .card h2 { font-size: 15px; font-weight: 900; margin: 0 0 12px; }
+  #billResults h1 { font-size: 26px; font-weight: 900; margin: 0 0 2px; letter-spacing: -0.4px; }
+  .scopebadge { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .4px; background: #222; color: #fff; border-radius: 999px; padding: 3px 9px; margin-bottom: 10px; }
+  .bill-sub { font-size: 14px; color: #444; line-height: 1.5; margin: 0 0 18px; max-width: 90%; }
+  .result-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .metric { border: 1px solid #e6e6e6; border-radius: 8px; padding: 13px 15px; }
+  .metric .lab { font-size: 11.5px; color: #777; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; }
+  .metric .amt { font-size: 23px; font-weight: 900; margin-top: 6px; }
+  .metric .sub { font-size: 12px; color: #888; margin-top: 2px; }
+  .metric.actual .amt { color: #315C8C; }
+  .metric.scenario .amt { color: #9AA7B5; }
+  .metric.diff .amt { color: #B8860B; }
+  .bars { margin-top: 16px; }
+  .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 13px; }
+  .bar-row .blab { width: 120px; text-align: right; color: #555; }
+  .bar-track { flex: 1; background: #e6e6e6; border-radius: 4px; height: 30px; }
+  .bar-fill { height: 30px; border-radius: 4px; display: block; }
+  .bar-fill.actual { background: #315C8C; }
+  .bar-fill.scenario { background: #9AA7B5; }
+  .bar-row .bamt { width: 120px; font-weight: 800; }
+  .policy { font-size: 12.5px; color: #444; line-height: 1.5; margin: 0 0 8px; }
+  .policy a { color: #315C8C; }
+  .detail-item { font-size: 13.5px; margin: 4px 0; color: #444; }
+  .detail-item b { color: #222; }
+  .sources { font-size: 12.5px; line-height: 1.6; }
+  .sources a { color: #315C8C; }
+  table.t { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+  table.t th, table.t td { border: 1px solid #e6e6e6; padding: 4px 6px; text-align: right; }
+  table.t th:first-child, table.t td:first-child { text-align: left; }
+  table.t th { background: #fafafa; font-weight: 800; }
+
+  /* County right panel (map) */
+  #mapWrap { position: absolute; inset: 0; }
+  #map { position: absolute; inset: 0; }
+
+  .empty { display: flex; align-items: center; justify-content: center; height: 100%; color: #999; font-size: 15px; padding: 30px; }
+
+  @media (max-width: 760px) {
+    #app { grid-template-columns: 1fr; grid-template-rows: auto 55vh; height: auto; }
+    #leftPanel { border-right: none; border-bottom: 1px solid #d9d9d9; }
+    #rightArea { height: 55vh; }
+    #mapWrap { position: relative; }
+    .result-grid { grid-template-columns: 1fr; }
+    .bar-row .blab, .bar-row .bamt { width: 80px; }
+    .search-row { flex-direction: column; }
   }
 </style>
 </head>
 <body>
+<header id="header">
+  <div class="brand">NC Property Tax · Mecklenburg County<span class="sub">Mecklenburg County, North Carolina</span></div>
+  <div class="seg" role="tablist">
+    <button id="tabBill" class="active" type="button" role="tab" aria-selected="true" aria-controls="viewBill">My Bill</button>
+    <button id="tabCounty" type="button" role="tab" aria-selected="false" aria-controls="viewCounty">County</button>
+  </div>
+</header>
+
 <div id="app">
-  <div class="side-panel">
-    <div class="main-title">NC Property Tax Pressure Index</div>
-    <div class="subtitle">How property tax revenue grew relative to inflation and population from 2016 to 2025.</div>
-    <div class="rule"></div>
-
-    <div class="place-name" id="placeName">Mecklenburg County</div>
-    <div class="score-box" id="scoreBox" style="background:#54B978;">0</div>
-    <p class="panel-sentence" id="sentence"></p>
-
-    <details class="section-card">
-      <summary>Revenue &amp; spending flow</summary>
-      <div class="body">
-        <p class="chart-note">Total nominal revenue by source (left) flows into a shared General Fund pool, then out to spending by area (right). The chart does not imply any revenue source funded any specific spending area.</p>
-        <div style="position:relative;">
+  <aside id="leftPanel">
+    <!-- County view (left) -->
+    <section id="countyPanel" class="view">
+      <details class="section-card" open>
+        <summary>Revenue &amp; spending flow</summary>
+        <div class="body" style="position:relative;">
+          <p class="chart-note">Total nominal revenue by source (left) flows into a shared General Fund pool, then out by spending area (right).</p>
           <div class="sankey-tooltip" id="sankeyTip"></div>
-          <svg id="sankey" viewBox="0 0 900 460" width="100%"></svg>
+          <svg id="sankey" viewBox="0 0 700 520" width="100%"></svg>
         </div>
-      </div>
-    </details>
-
-    <details class="section-card">
-      <summary>Benchmark by year</summary>
-      <div class="body">
-        <p class="chart-note">Annual property tax collections vs. the inflation + population benchmark (millions of dollars).</p>
-        <svg id="benchmarkChart" viewBox="0 0 900 320" preserveAspectRatio="xMidYMid meet"></svg>
-        <div style="margin-top:8px;">
-          <span class="legend-chip"><span class="sw" style="background:#315C8C;"></span> Actual</span>
-          <span class="legend-chip"><span class="sw" style="background:#9AA7B5;"></span> Benchmark</span>
+      </details>
+      <div class="place-name" id="placeName">Mecklenburg County</div>
+      <div class="score-box" id="scoreBox" style="background:#54B978;">0</div>
+      <p class="panel-sentence" id="sentence"></p>
+      <details class="section-card" open>
+        <summary>Benchmark by year</summary>
+        <div class="body">
+          <p class="chart-note">Annual property tax collections vs. inflation + population benchmark (millions).</p>
+          <svg id="benchmarkChart" viewBox="0 0 700 300" preserveAspectRatio="xMidYMid meet"></svg>
+          <div style="margin-top:8px;">
+            <span class="legend-chip"><span class="sw" style="background:#315C8C;"></span> Actual</span>
+            <span class="legend-chip"><span class="sw" style="background:#9AA7B5;"></span> Benchmark</span>
+          </div>
         </div>
+      </details>
+      <p class="outline-note">County-level index for demonstration, 2016–2025. Based on Mecklenburg property tax revenue, population, and CPI-U.</p>
+    </section>
+
+    <!-- My Bill view (left) -->
+    <section id="billPanel" class="view active">
+      <h2>Find a property</h2>
+      <div class="search-row">
+        <input id="addrInput" type="text" placeholder="Street address, e.g. 1000 E Woodlawn Rd" autocomplete="off" aria-label="Street address" />
+        <button id="searchBtn" type="button">Search</button>
       </div>
-    </details>
+      <p class="hint">Partial addresses are OK. Pick a specific property if several match.</p>
+      <div id="status" role="status"></div>
+      <ul class="cands" id="cands"></ul>
+      <div id="nores" class="hidden">
+        <p class="note" style="color:#8a3b3b;">No residential properties matched. Check the spelling or try a nearby street name.</p>
+      </div>
+      <div id="billMeta" class="hidden">
+        <div class="rule" style="height:1px;background:#e2e2e2;margin:14px 0;"></div>
+        <h2>Selected property</h2>
+        <p class="prop-line"><b>Address:</b> <span id="rAddress"></span></p>
+        <p class="prop-line"><b>Parcel ID:</b> <span id="rParcel"></span></p>
+        <p class="prop-line"><b>Assessed value:</b> <span id="rValue"></span> (<span id="rBasis"></span>)</p>
+        <p class="prop-line"><b>Use:</b> <span id="rUse"></span></p>
+        <p class="note">Parcel data is a live NC OneMap snapshot and may predate the 2025 tax year. Sources and method in the right panel.</p>
+      </div>
+    </section>
+  </aside>
 
-    <p class="footer-note">County-level index for demonstration. Based on Mecklenburg County property tax revenue, county population, and CPI-U, 2016–2025.</p>
-    <a href="compare.html" class="demo-link">Compare a single property's county tax &rarr;</a>
-  </div>
+  <main id="rightArea">
+    <!-- County view (right): map -->
+    <div id="mapView" class="view">
+      <div id="mapWrap"><div id="map"></div></div>
+    </div>
 
-  <div class="map-wrap">
-    <div id="map"></div>
-  </div>
+    <!-- My Bill view (right): analysis -->
+    <div id="billResults" class="view active hidden">
+      <div class="scopebadge">2025 &middot; Mecklenburg County tax only</div>
+      <h1>Your county property tax</h1>
+      <p class="bill-sub">How much county property tax a home would pay at the actual 2025 county rate vs. a rate implied by a 2016-to-2025 inflation-plus-population benchmark. This is the county tax only — Charlotte/town taxes, special-district taxes, and flat fees are excluded. Use the assessed value as the taxable value; NC relief/exemption cases are not modeled.</p>
+
+      <div class="card">
+        <h2>County property tax, annually</h2>
+        <div class="result-grid">
+          <div class="metric actual"><div class="lab">Actual rate</div><div class="amt" id="mActual"></div><div class="sub">at <span id="rActualRate"></span> per $100</div></div>
+          <div class="metric scenario"><div class="lab">Benchmark</div><div class="amt" id="mScenario"></div><div class="sub">at <span id="rScenarioRate"></span> per $100</div></div>
+          <div class="metric diff"><div class="lab">Annual difference</div><div class="amt" id="mDiff"></div><div class="sub" id="mDiffPct"></div></div>
+        </div>
+        <div class="bars">
+          <div class="bar-row"><div class="blab">Actual rate</div><span class="bar-track"><span class="bar-fill actual" id="barActual"></span></span><span class="bamt" id="amtActual"></span></div>
+          <div class="bar-row"><div class="blab">Benchmark</div><span class="bar-track"><span class="bar-fill scenario" id="barScenario"></span></span><span class="bamt" id="amtScenario"></span></div>
+        </div>
+        <div class="callout" id="resultNote"></div>
+      </div>
+
+      <div class="card">
+        <h2>About this comparison</h2>
+        <p class="policy">This comparison holds the property&rsquo;s value constant and changes only the county tax rate. The benchmark models an inflation-plus-population limit: HB 1089 requires county levy limits but does not itself specify this formula. [<a href="#" data-src="hb1089">source</a>]</p>
+        <p class="policy">It is a look at the current county rate relative to a 2016-to-2025 inflation-plus-population scenario — not a forecast of an enacted future rate, and it does not model changes in services, other taxes/fees, or economic responses.</p>
+      </div>
+
+      <details class="card"><summary>How this is calculated</summary>
+        <div>
+          <p class="detail-item"><b>Actual county rate:</b> <span id="dActualRate"></span> per $100 (FY2025&ndash;26 official Mecklenburg county rate).</p>
+          <p class="detail-item"><b>Scenario rate:</b> derived by capping the inflation-plus-population benchmark levy at the actual levy and dividing by the total taxable base.</p>
+          <p class="detail-item"><b>Actual county levy:</b> <span id="dLActual"></span> (FY2025&ndash;26).</p>
+          <p class="detail-item"><b>County taxable base:</b> <span id="dX"></span> (FY2025&ndash;26 assessed valuation).</p>
+          <p class="detail-item"><b>2016 baseline levy:</b> <span id="dL2016"></span> (FY2016&ndash;17).</p>
+          <p class="detail-item"><b>2025 benchmark ceiling:</b> <span id="dB"></span> — compounding the 2016 baseline through <span id="dN"></span> inflation+population transitions.</p>
+          <p class="detail-item"><b>Scenario levy (capped):</b> <span id="dLS"></span> = min(actual, ceiling).</p>
+          <p class="detail-item"><b>Scenario rate:</b> 100 &times; <span id="dLS2"></span> &divide; <span id="dX2"></span> = <span id="dScenarioRate2"></span> per $100.</p>
+          <p class="detail-item"><b>Rate reconciliation:</b> <span id="dRec"></span> between the reported levy and rate &times; base &divide; 100.</p>
+          <p class="detail-item">Then for a property: bill = value &times; rate &divide; 100; difference = actual bill &minus; benchmark bill.</p>
+          <table class="t">
+            <thead><tr><th>Transition into year</th><th>Inflation</th><th>Population</th><th>Growth</th><th>Benchmark levy</th></tr></thead>
+            <tbody id="trBody"></tbody>
+          </table>
+          <p class="note">Inflation is the U.S. CPI-U annual average (BLS). Population is Mecklenburg annual resident estimates (U.S. Census). The transition into year T uses that year&rsquo;s inflation and population change.</p>
+          <p class="note"><b>Assumptions:</b> the ceiling compounds from the 2016 baseline; a year below the ceiling does not ratchet it down; no separate new-construction allowance or overrides. The scenario never prescribes an increase — if the actual levy is already below the ceiling, the actual rate is retained.</p>
+          <p class="sources"><b>Sources:</b> Mecklenburg county tax rate (<a href="#" data-src="rates">tax.mecknc.gov</a>), county rate announcement (<a href="#" data-src="rate_news">pi.mecknc.gov</a>), NCDOR levy/valuation reports (<a href="#" data-src="ncdor_levy">ncdor.gov</a>), NC OneMap parcels (<a href="#" data-src="parcels">nconemap.gov</a>), U.S. Census population estimates (<a href="#" data-src="census_pop">census.gov</a>), BLS CPI-U (<a href="#" data-src="bls_cpi">bls.gov</a>).</p>
+        </div>
+      </details>
+    </div>
+  </main>
 </div>
 
 <script>
@@ -135,155 +270,233 @@ const BUCKET_COLORS = {
   "Transportation":"#C97842","Other":"#6F6F6F"
 };
 
-const fmtMoney = (x) => {
-  const sign = x < 0 ? "-$" : "$";
-  const a = Math.abs(x);
-  if (a >= 1e9) return sign + (a/1e9).toFixed(1) + "B";
-  if (a >= 1e6) return sign + (a/1e6).toFixed(1) + "M";
-  if (a >= 1e3) return sign + (a/1e3).toFixed(1) + "K";
-  return sign + Math.round(a).toLocaleString();
-};
+const ONEMAP_QUERY = "https://services.nconemap.gov/secure/rest/services/NC1Map_Parcels/MapServer/0/query";
+
+const fmtMoney = (x) => "$" + Math.abs(x).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + (x < 0 ? " less" : "");
 const pctSigned = (x) => (x > 0 ? "+" : "") + x.toFixed(1) + "%";
-const pctAbs = (x) => Math.abs(x).toFixed(1) + "%";
-const moreLess = (x) => x < 0 ? "less" : "more";
+const fmtBig = (x) => (x / 1e6).toLocaleString(undefined, { maximumFractionDigits: 1 }) + "M";
 
-let DATA = null;
+let DATA = null;      // county mecklenburg.json
+let COUNTY = null;    // benchmark constant mecklenburg_benchmark.json
+let MAP = null;
 
-async function loadData() {
-  const [j, gj] = await Promise.all([
+const byId = (id) => document.getElementById(id);
+
+// ---- view toggling ----
+function setView(view) {
+  document.querySelectorAll("#countyPanel,#billPanel").forEach(el => el.classList.toggle("active", /bill/.test(view) ? el.id === "billPanel" : el.id === "countyPanel"));
+  document.querySelectorAll("#mapView,#billResults").forEach(el => el.classList.toggle("active", /bill/.test(view) ? el.id === "billResults" : el.id === "mapView"));
+  byId("tabBill").classList.toggle("active", view === "bill");
+  byId("tabCounty").classList.toggle("active", view === "county");
+  byId("tabBill").setAttribute("aria-selected", view === "bill" ? "true" : "false");
+  byId("tabCounty").setAttribute("aria-selected", view === "county" ? "true" : "false");
+}
+
+// ---- data loading ----
+async function loadAll() {
+  const [j, gj, bm] = await Promise.all([
     fetch("data/mecklenburg.json").then(r => r.json()),
-    fetch("data/mecklenburg.geojson").then(r => r.json())
+    fetch("data/mecklenburg.geojson").then(r => r.json()),
+    fetch("data/mecklenburg_benchmark.json").then(r => r.json())
   ]);
-  DATA = j;
+  DATA = j; COUNTY = bm;
   renderPanel(j);
   renderMap(gj);
   renderSankey(j);
   renderBenchmarkChart(j);
+  fillDetails();
 }
 
+// ---- county panel ----
 function renderPanel(d) {
-  document.getElementById("placeName").textContent = d.label + " — " + d.period;
-  const scoreBox = document.getElementById("scoreBox");
-  const scoreText = d.score == null ? "Data not reported" : String(d.score);
-  scoreBox.textContent = scoreText;
-  scoreBox.style.background = d.score == null ? "#BDBDBD" : SCORE_COLORS[String(d.score)];
-  scoreBox.style.color = d.score == null ? "#333" : "#fff";
-  if (d.score == null) scoreBox.style.fontSize = "20px";
-
-  const sent = document.getElementById("sentence");
-  sent.innerHTML = `${d.label} collected <strong>${pctAbs(d.difference_pct)} ${moreLess(d.difference_dollars)}</strong> property tax revenue than it would have under the inflation plus population benchmark, or <strong>${fmtMoney(Math.abs(d.difference_dollars))} ${moreLess(d.difference_dollars)}</strong>.`;
+  byId("placeName").textContent = d.label;
+  const sb = byId("scoreBox");
+  const st = d.score == null ? "Data not reported" : String(d.score);
+  sb.textContent = st;
+  sb.style.background = d.score == null ? "#BDBDBD" : SCORE_COLORS[String(d.score)];
+  sb.style.color = d.score == null ? "#333" : "#fff";
+  if (d.score == null) sb.style.fontSize = "20px";
+  const moreLess = (x) => x < 0 ? "less" : "more";
+  byId("sentence").innerHTML = `${d.label} collected <strong>${pctSigned(d.difference_pct)}</strong> property tax revenue ${moreLess(d.difference_dollars)} than it would under the inflation + population benchmark ($2016–2025).`;
 }
 
 function renderMap(gj) {
-  const map = L.map("map", { scrollWheelZoom: true }).setView([35.28, -80.83], 10);
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-    attribution: "&copy; OpenStreetMap &copy; CARTO"
-  }).addTo(map);
-
-  const d = DATA;
-  const color = d.score == null ? "#BDBDBD" : SCORE_COLORS[String(d.score)];
-  const layer = L.geoJSON(gj, {
-    style: () => ({ fillColor: color, weight: 1.5, opacity: 1, color: "#222", fillOpacity: 0.75 })
-  }).addTo(map);
-  layer.bindTooltip(
-    `<strong>${d.label}</strong><br/>Score: ${d.score==null?"Data not reported":d.score}<br/>Percent gap: ${pctSigned(d.difference_pct)}<br/>Amount gap: ${fmtMoney(d.difference_dollars)}`
-  );
-  map.fitBounds(layer.getBounds(), { padding: [20, 20] });
+  MAP = L.map("map", { scrollWheelZoom: true }).setView([35.28, -80.83], 10);
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", { attribution: "&copy; OpenStreetMap &copy; CARTO" }).addTo(MAP);
+  const color = DATA.score == null ? "#BDBDBD" : SCORE_COLORS[String(DATA.score)];
+  const layer = L.geoJSON(gj, { style: () => ({ fillColor: color, weight: 1.5, opacity: 1, color: "#222", fillOpacity: 0.75 }) }).addTo(MAP);
+  layer.bindTooltip(`<strong>${DATA.label}</strong><br/>Score: ${DATA.score==null?"Data not reported":DATA.score}<br/>Percent gap: ${pctSigned(DATA.difference_pct)}<br/>Amount gap: ${fmtMoney(Math.abs(DATA.difference_dollars))}`);
+  MAP.fitBounds(layer.getBounds(), { padding: [20, 20] });
 }
 
 function renderSankey(d) {
   const nodes = [];
-  const gfIndex = d.revenue.length; // General Fund sits after all revenue nodes
+  const gfIndex = d.revenue.length;
   const gfName = "General Fund";
   d.revenue.forEach(r => nodes.push({ name: r.area }));
   nodes.push({ name: gfName });
   d.spending.forEach(s => nodes.push({ name: s.area }));
-
   const links = [];
   d.revenue.forEach((r, i) => links.push({ source: i, target: gfIndex, value: r.total }));
   d.spending.forEach((s, j) => links.push({ source: gfIndex, target: gfIndex + 1 + j, value: s.total }));
 
   const svg = d3.select("#sankey");
-  const margin = { top: 10, right: 130, bottom: 10, left: 130 };
-  const width = 900 - margin.left - margin.right;
-  const height = 460 - margin.top - margin.bottom;
-
-  const sankey = d3.sankey()
-    .nodeWidth(16).nodePadding(18)
-    .extent([[margin.left, margin.top], [width + margin.left, height + margin.top]]);
-
+  svg.selectAll("*").remove();
+  const margin = { top: 10, right: 120, bottom: 10, left: 120 };
+  const width = 700 - margin.left - margin.right;
+  const height = 520 - margin.top - margin.bottom;
+  const sankey = d3.sankey().nodeWidth(14).nodePadding(16).extent([[margin.left, margin.top], [width + margin.left, height + margin.top]]);
   const graph = sankey({ nodes: nodes.map(n => Object.assign({}, n)), links: links.map(l => Object.assign({}, l)) });
-
-  const color = (name) => name === "General Fund" ? "#888888" : (BUCKET_COLORS[name] || "#6F6F6F");
-
+  const color = (name) => name === gfName ? "#888888" : (BUCKET_COLORS[name] || "#6F6F6F");
   const tooltip = d3.select("#sankeyTip");
 
-  const link = svg.append("g").attr("fill", "none").attr("stroke-opacity", 0.4)
-    .selectAll("path").data(graph.links).join("path")
-    .attr("d", d3.sankeyLinkHorizontal())
-    .attr("stroke", d => color(d.source.name))
-    .attr("stroke-width", d => Math.max(1, d.width))
-    .on("mousemove", function(event, l) {
-      tooltip.style("display","block")
-        .style("left", (event.pageX + 14) + "px")
-        .style("top", (event.pageY - 10) + "px")
-        .html(`${l.source.name} → ${l.target.name}: ${fmtMoney(l.value)}`);
-    })
-    .on("mouseout", () => tooltip.style("display","none"));
-
+  svg.append("g").attr("fill", "none").attr("stroke-opacity", 0.4).selectAll("path").data(graph.links).join("path")
+    .attr("d", d3.sankeyLinkHorizontal()).attr("stroke", d => color(d.source.name)).attr("stroke-width", d => Math.max(1, d.width))
+    .on("mousemove", function (event, l) { tooltip.style("display", "block").style("left", (event.pageX + 14) + "px").style("top", (event.pageY - 10) + "px").html(`${l.source.name} → ${l.target.name}: ${fmtMoney(l.value)}`); })
+    .on("mouseout", () => tooltip.style("display", "none"));
   const node = svg.append("g").selectAll("g").data(graph.nodes).join("g");
-  node.append("rect")
-    .attr("x", d => d.x0).attr("y", d => d.y0)
-    .attr("height", d => d.y1 - d.y0).attr("width", d => d.x1 - d.x0)
-    .attr("fill", d => color(d.name))
-    .attr("rx", 2)
-    .on("mousemove", function(event, n) {
-      tooltip.style("display","block")
-        .style("left", (event.pageX + 14) + "px")
-        .style("top", (event.pageY - 10) + "px")
-        .html(`${n.name}: ${fmtMoney(n.value)}`);
-    })
-    .on("mouseout", () => tooltip.style("display","none"));
-  node.append("text")
-    .attr("x", d => d.x0 < width / 2 + margin.left ? d.x0 - 6 : d.x1 + 6)
-    .attr("y", d => (d.y0 + d.y1) / 2)
-    .attr("dy", "0.35em")
-    .attr("text-anchor", d => d.x0 < width / 2 + margin.left ? "end" : "start")
-    .attr("font-size", 12)
-    .text(d => d.name);
+  node.append("rect").attr("x", d => d.x0).attr("y", d => d.y0).attr("height", d => d.y1 - d.y0).attr("width", d => d.x1 - d.x0).attr("fill", d => color(d.name)).attr("rx", 2)
+    .on("mousemove", function (event, n) { tooltip.style("display", "block").style("left", (event.pageX + 14) + "px").style("top", (event.pageY - 10) + "px").html(`${n.name}: ${fmtMoney(n.value)}`); })
+    .on("mouseout", () => tooltip.style("display", "none"));
+  node.append("text").attr("x", d => d.x0 < width / 2 + margin.left ? d.x0 - 6 : d.x1 + 6).attr("y", d => (d.y0 + d.y1) / 2).attr("dy", "0.35em").attr("text-anchor", d => d.x0 < width / 2 + margin.left ? "end" : "start").attr("font-size", 11).text(d => d.name);
 }
 
 function renderBenchmarkChart(d) {
   const svg = d3.select("#benchmarkChart");
-  const margin = { top: 20, right: 20, bottom: 40, left: 60 };
-  const width = 900 - margin.left - margin.right;
-  const height = 320 - margin.top - margin.bottom;
+  svg.selectAll("*").remove();
+  const margin = { top: 20, right: 14, bottom: 36, left: 52 };
+  const width = 700 - margin.left - margin.right;
+  const height = 300 - margin.top - margin.bottom;
   const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
-
   const rows = d.benchmark_by_year;
   const x = d3.scaleBand().domain(rows.map(r => r.year)).range([0, width]).padding(0.2);
   const yMax = d3.max(rows, r => Math.max(r.actual, r.benchmark)) / 1e6;
   const y = d3.scaleLinear().domain([0, Math.ceil(yMax * 1.1)]).range([height, 0]);
-
-  g.append("g").call(d3.axisLeft(y).ticks(6));
+  g.append("g").call(d3.axisLeft(y).ticks(5));
   g.append("g").attr("transform", `translate(0,${height})`).call(d3.axisBottom(x).tickFormat(d3.format("d")));
-
-  g.selectAll(".bench").data(rows).join("rect")
-    .attr("x", d => x(d.year) + x.bandwidth()/2 + 2)
-    .attr("width", x.bandwidth()/2 - 3)
-    .attr("y", d => y(d.benchmark/1e6))
-    .attr("height", d => height - y(d.benchmark/1e6))
-    .attr("fill", "#9AA7B5");
-
-  g.selectAll(".act").data(rows).join("rect")
-    .attr("x", d => x(d.year) - 2)
-    .attr("width", x.bandwidth()/2 - 3)
-    .attr("y", d => y(d.actual/1e6))
-    .attr("height", d => height - y(d.actual/1e6))
-    .attr("fill", "#315C8C");
+  g.selectAll(".bench").data(rows).join("rect").attr("x", d => x(d.year) + x.bandwidth()/2 + 2).attr("width", x.bandwidth()/2 - 3).attr("y", d => y(d.benchmark/1e6)).attr("height", d => height - y(d.benchmark/1e6)).attr("fill", "#9AA7B5");
+  g.selectAll(".act").data(rows).join("rect").attr("x", d => x(d.year) - 2).attr("width", x.bandwidth()/2 - 3).attr("y", d => y(d.actual/1e6)).attr("height", d => height - y(d.actual/1e6)).attr("fill", "#315C8C");
 }
 
-loadData();
+// ---- My Bill ----
+function fillDetails() {
+  byId("dActualRate").textContent = COUNTY.r_actual.toFixed(4) + " per $100";
+  byId("dLActual").textContent = "$" + COUNTY.l_actual.toLocaleString();
+  byId("dX").textContent = "$" + COUNTY.x.toLocaleString();
+  byId("dL2016").textContent = "$" + COUNTY.l_2016.toLocaleString();
+  byId("dB").textContent = "$" + Math.round(COUNTY.b_endpoint).toLocaleString();
+  byId("dN").textContent = COUNTY.transitions.length;
+  byId("dLS").textContent = "$" + Math.round(COUNTY.l_scenario).toLocaleString();
+  byId("dLS2").textContent = "$" + Math.round(COUNTY.l_scenario).toLocaleString();
+  byId("dX2").textContent = "$" + COUNTY.x.toLocaleString();
+  byId("dScenarioRate2").textContent = COUNTY.r_scenario.toFixed(4);
+  byId("dRec").textContent = (COUNTY.rate_reconciliation_pct >= 0 ? "+" : "") + COUNTY.rate_reconciliation_pct.toFixed(3) + "%";
+  const tb = byId("trBody");
+  tb.innerHTML = "";
+  for (const t of COUNTY.transitions) {
+    const tr = document.createElement("tr");
+    [t.to_year, t.inflation, t.population, t.growth, t.benchmark_levy].forEach((v, i) => {
+      const td = document.createElement("td");
+      if (i === 0) td.textContent = v;
+      else if (i === 4) td.textContent = "$" + (v / 1e6).toFixed(1) + "M";
+      else td.textContent = (v * 100).toFixed(2) + "%";
+      tr.appendChild(td);
+    });
+    tb.appendChild(tr);
+  }
+}
+
+function setStatus(msg) { byId("status").textContent = msg || ""; }
+
+async function searchAddress(query) {
+  const q = (query || "").trim();
+  if (!q) { setStatus("Enter an address."); return; }
+  byId("searchBtn").disabled = true;
+  setStatus("Searching…");
+  byId("cands").innerHTML = "";
+  byId("nores").classList.add("hidden");
+  try {
+    const where = PT.buildAddressWhere(q);
+    if (!where) { setStatus("Enter an address."); return; }
+    const body = new URLSearchParams();
+    body.append("where", where);
+    body.append("outFields", "parno,siteadd,parval,parvaltype,parusecode,parusedesc");
+    body.append("f", "pjson");
+    body.append("returnGeometry", "false");
+    body.append("resultRecordCount", "12");
+    const resp = await fetch(ONEMAP_QUERY, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: body.toString() });
+    const text = await resp.text();
+    const data = JSON.parse(text);
+    if (data.error) throw new Error(data.error.message || "Service error");
+    const feats = (data.features || []).map(f => f.attributes).filter(PT.isUsableResidential);
+    if (feats.length === 0) { setStatus(""); byId("nores").classList.remove("hidden"); return; }
+    renderCandidates(feats);
+    setStatus(feats.length + " residential match" + (feats.length > 1 ? "es" : "") + (feats.length > 8 ? " (showing first 8)." : "."));
+  } catch (err) {
+    setStatus("Search failed (source unavailable). Please try again.");
+    console.error(err);
+  } finally {
+    byId("searchBtn").disabled = false;
+  }
+}
+
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+
+function renderCandidates(feats) {
+  const list = byId("cands");
+  list.innerHTML = "";
+  feats.slice(0, 8).forEach(f => {
+    const li = document.createElement("li");
+    const type = (f.parusedesc || f.parusecode || "").replace(/\b\w/g, c => c.toUpperCase());
+    li.innerHTML = `<div>${esc(f.siteadd || "No address")}</div><div class="val">$${(f.parval || 0).toLocaleString()} &middot; ${esc(type)}</div><div class="pid">Parcel ${esc(f.parno)}</div>`;
+    li.addEventListener("click", () => selectParcel(f));
+    list.appendChild(li);
+  });
+}
+
+function selectParcel(f) {
+  const vm = PT.computeComparison(f.parval, COUNTY);
+  byId("rAddress").textContent = f.siteadd || "No address";
+  byId("rParcel").textContent = f.parno;
+  byId("rValue").textContent = "$" + (f.parval || 0).toLocaleString();
+  byId("rBasis").textContent = f.parvaltype || "assessed";
+  byId("rUse").textContent = (f.parusedesc || f.parusecode || "n/a");
+  byId("billMeta").classList.remove("hidden");
+
+  byId("mActual").textContent = fmtMoney(vm.tax_actual);
+  byId("mScenario").textContent = fmtMoney(vm.tax_scenario);
+  byId("mDiff").textContent = fmtMoney(vm.difference);
+  byId("mDiffPct").textContent = (vm.difference === 0 ? "0%" : (vm.difference > 0 ? "+" : "") + vm.percent_difference.toFixed(2) + "%");
+  byId("rActualRate").textContent = COUNTY.r_actual.toFixed(4);
+  byId("rScenarioRate").textContent = COUNTY.r_scenario.toFixed(4);
+
+  const max = Math.max(vm.tax_actual, vm.tax_scenario, 1);
+  byId("barActual").style.width = (100 * vm.tax_actual / max) + "%";
+  byId("barScenario").style.width = (100 * vm.tax_scenario / max) + "%";
+  byId("amtActual").textContent = fmtMoney(vm.tax_actual);
+  byId("amtScenario").textContent = fmtMoney(vm.tax_scenario);
+
+  if (vm.below_benchmark) {
+    byId("resultNote").innerHTML = `<b>Mecklenburg County is at or below the inflation+population benchmark.</b> Its FY2025&ndash;26 county levy (<b>$${fmtBig(COUNTY.l_actual)}</b>) is below the 2025 benchmark ceiling (<b>$${fmtBig(COUNTY.b_endpoint)}</b>) built from 2016, so the capped scenario keeps the actual rate and the difference is effectively $0. The county reduced its rate sharply ($${COUNTY.r_2016.toFixed(4)} in 2016 to $${COUNTY.r_actual.toFixed(4)} per $100 in 2025) as assessed values grew.`;
+  } else {
+    byId("resultNote").innerHTML = `<b>This property pays ${vm.percent_difference > 0 ? "more" : "less"} at the actual rate than under the benchmark.</b> The annual difference is shown above.`;
+  }
+  byId("billResults").classList.remove("hidden");
+}
+
+// ---- init ----
+document.addEventListener("DOMContentLoaded", () => {
+  setView("bill");
+  byId("tabBill").addEventListener("click", () => setView("bill"));
+  byId("tabCounty").addEventListener("click", () => setView("county"));
+  const run = () => searchAddress(byId("addrInput").value);
+  byId("searchBtn").addEventListener("click", run);
+  byId("addrInput").addEventListener("keydown", e => { if (e.key === "Enter") run(); });
+  document.querySelectorAll("a[data-src]").forEach(a => {
+    a.addEventListener("click", e => { e.preventDefault(); const k = a.getAttribute("data-src"); if (COUNTY.sources[k]) window.open(COUNTY.sources[k], "_blank"); });
+  });
+  loadAll();
+});
 </script>
 </body>
 </html>
