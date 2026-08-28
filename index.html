@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Mecklenburg Property Tax · NC</title>
+<title>NC Property Tax · Understanding HB 1089</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
@@ -26,7 +26,7 @@
   .seg button.active { background: #315C8C; color: #fff; }
   #app {
     display: grid;
-    grid-template-columns: min(33%, 400px) 1fr;
+    grid-template-columns: min(42%, 560px) 1fr;
     grid-template-rows: 1fr;
     height: calc(100vh - 60px);
     min-height: 480px;
@@ -44,11 +44,16 @@
   .view.active { display: block; }
 
   /* County left panel */
-  #countyPanel .place-name { font-size: 24px; font-weight: 900; margin: 4px 0 10px; }
-  .score-box {
-    width: 100%; height: 72px; display: flex; align-items: center; justify-content: center;
-    color: #fff; font-size: 36px; font-weight: 900; margin: 0 0 12px; border-radius: 4px;
+  .county-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  #countySelect {
+    font-size: 14px; font-weight: 700; padding: 9px 12px; border: 1px solid #cfcfcf;
+    border-radius: 8px; background: #fff; color: #222; cursor: pointer; min-width: 190px;
   }
+  .grade-badge {
+    width: 46px; height: 46px; border-radius: 50%; display: none; align-items: center;
+    justify-content: center; color: #fff; font-size: 22px; font-weight: 900; flex: 0 0 auto;
+  }
+  .grade-badge.show { display: flex; }
   .panel-sentence { font-size: 14px; line-height: 1.45; margin: 0 0 16px; }
   .panel-sentence strong { font-weight: 900; }
   .section-card { margin-top: 12px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; overflow: hidden; }
@@ -59,8 +64,6 @@
   .section-card .body { padding: 4px 14px 14px; }
   .chart-note { color: #666; font-size: 12px; margin: 4px 0 8px; line-height: 1.35; }
   #sankey { width: 100%; }
-  .legend-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; margin-right: 12px; }
-  .legend-chip .sw { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
   .sankey-tooltip {
     position: absolute; background: rgba(20,20,20,0.92); color: #fff; padding: 5px 8px;
     border-radius: 4px; font-size: 12px; pointer-events: none; z-index: 1000; display: none;
@@ -140,7 +143,7 @@
 </head>
 <body>
 <header id="header">
-  <div class="brand">NC Property Tax · Mecklenburg County<span class="sub">Mecklenburg County, North Carolina</span></div>
+  <div class="brand">NC Property Tax<span class="sub">Understanding HB 1089</span></div>
   <div class="seg" role="tablist">
     <button id="tabBill" class="active" type="button" role="tab" aria-selected="true" aria-controls="viewBill">My Bill</button>
     <button id="tabCounty" type="button" role="tab" aria-selected="false" aria-controls="viewCounty">County</button>
@@ -151,6 +154,13 @@
   <aside id="leftPanel">
     <!-- County view (left) -->
     <section id="countyPanel" class="view">
+      <div class="county-bar">
+        <select id="countySelect" aria-label="Select county">
+          <option value="mecklenburg">Mecklenburg County</option>
+          <option value="halifax" disabled>Halifax County (coming soon)</option>
+        </select>
+        <div class="grade-badge" id="gradeBadge" title=""></div>
+      </div>
       <details class="section-card" open>
         <summary>Revenue &amp; spending flow</summary>
         <div class="body" style="position:relative;">
@@ -159,21 +169,8 @@
           <svg id="sankey" viewBox="0 0 700 520" width="100%"></svg>
         </div>
       </details>
-      <div class="place-name" id="placeName">Mecklenburg County</div>
-      <div class="score-box" id="scoreBox" style="background:#54B978;">0</div>
       <p class="panel-sentence" id="sentence"></p>
-      <details class="section-card" open>
-        <summary>Benchmark by year</summary>
-        <div class="body">
-          <p class="chart-note">Annual property tax collections vs. inflation + population benchmark (millions).</p>
-          <svg id="benchmarkChart" viewBox="0 0 700 300" preserveAspectRatio="xMidYMid meet"></svg>
-          <div style="margin-top:8px;">
-            <span class="legend-chip"><span class="sw" style="background:#315C8C;"></span> Actual</span>
-            <span class="legend-chip"><span class="sw" style="background:#9AA7B5;"></span> Benchmark</span>
-          </div>
-        </div>
-      </details>
-      <p class="outline-note">County-level index for demonstration, 2016–2025. Based on Mecklenburg property tax revenue, population, and CPI-U.</p>
+      <p class="outline-note">County-level index for demonstration, 2016–2025. Based on county property tax revenue, population, and CPI-U.</p>
     </section>
 
     <!-- My Bill view (left) -->
@@ -259,9 +256,8 @@
 </div>
 
 <script>
-const SCORE_COLORS = {
-  "0": "#54B978", "1": "#FFC640", "2": "#F58B4B", "3": "#F05252"
-};
+const GRADE = { "0": { g: "A", c: "#54B978" }, "1": { g: "B", c: "#FFC640" }, "2": { g: "C", c: "#F58B4B" }, "3": { g: "D", c: "#F05252" } };
+const GRADE_NA = { g: "N/A", c: "#BDBDBD" };
 const BUCKET_COLORS = {
   "Property taxes":"#315C8C","Other taxes":"#7BA9D6","Sales taxes":"#4F8C5E",
   "Sales & services":"#9DC183","Intergovernmental":"#D9A441","Debt proceeds":"#9A6FB0",
@@ -303,19 +299,18 @@ async function loadAll() {
   renderPanel(j);
   renderMap(gj);
   renderSankey(j);
-  renderBenchmarkChart(j);
   fillDetails();
 }
 
 // ---- county panel ----
 function renderPanel(d) {
-  byId("placeName").textContent = d.label;
-  const sb = byId("scoreBox");
-  const st = d.score == null ? "Data not reported" : String(d.score);
-  sb.textContent = st;
-  sb.style.background = d.score == null ? "#BDBDBD" : SCORE_COLORS[String(d.score)];
-  sb.style.color = d.score == null ? "#333" : "#fff";
-  if (d.score == null) sb.style.fontSize = "20px";
+  const gd = d.score == null ? GRADE_NA : (GRADE[String(d.score)] || GRADE_NA);
+  const badge = byId("gradeBadge");
+  badge.textContent = gd.g;
+  badge.style.background = gd.c;
+  badge.style.color = gd.g === "N/A" ? "#333" : "#fff";
+  badge.title = d.score == null ? "Data not reported" : `Grade ${gd.g} (score ${d.score}/3)`;
+  badge.classList.add("show");
   const moreLess = (x) => x < 0 ? "less" : "more";
   byId("sentence").innerHTML = `${d.label} collected <strong>${pctSigned(d.difference_pct)}</strong> property tax revenue ${moreLess(d.difference_dollars)} than it would under the inflation + population benchmark ($2016–2025).`;
 }
@@ -323,9 +318,9 @@ function renderPanel(d) {
 function renderMap(gj) {
   MAP = L.map("map", { scrollWheelZoom: true }).setView([35.28, -80.83], 10);
   L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", { attribution: "&copy; OpenStreetMap &copy; CARTO" }).addTo(MAP);
-  const color = DATA.score == null ? "#BDBDBD" : SCORE_COLORS[String(DATA.score)];
+  const color = DATA.score == null ? "#BDBDBD" : (GRADE[String(DATA.score)] || GRADE_NA).c;
   const layer = L.geoJSON(gj, { style: () => ({ fillColor: color, weight: 1.5, opacity: 1, color: "#222", fillOpacity: 0.75 }) }).addTo(MAP);
-  layer.bindTooltip(`<strong>${DATA.label}</strong><br/>Score: ${DATA.score==null?"Data not reported":DATA.score}<br/>Percent gap: ${pctSigned(DATA.difference_pct)}<br/>Amount gap: ${fmtMoney(Math.abs(DATA.difference_dollars))}`);
+  layer.bindTooltip(`<strong>${DATA.label}</strong><br/>Grade: ${DATA.score==null?"Data not reported":(GRADE[String(DATA.score)]||GRADE_NA).g}<br/>Percent gap: ${pctSigned(DATA.difference_pct)}<br/>Amount gap: ${fmtMoney(Math.abs(DATA.difference_dollars))}`);
   MAP.fitBounds(layer.getBounds(), { padding: [20, 20] });
 }
 
@@ -359,23 +354,6 @@ function renderSankey(d) {
     .on("mousemove", function (event, n) { tooltip.style("display", "block").style("left", (event.pageX + 14) + "px").style("top", (event.pageY - 10) + "px").html(`${n.name}: ${fmtMoney(n.value)}`); })
     .on("mouseout", () => tooltip.style("display", "none"));
   node.append("text").attr("x", d => d.x0 < width / 2 + margin.left ? d.x0 - 6 : d.x1 + 6).attr("y", d => (d.y0 + d.y1) / 2).attr("dy", "0.35em").attr("text-anchor", d => d.x0 < width / 2 + margin.left ? "end" : "start").attr("font-size", 11).text(d => d.name);
-}
-
-function renderBenchmarkChart(d) {
-  const svg = d3.select("#benchmarkChart");
-  svg.selectAll("*").remove();
-  const margin = { top: 20, right: 14, bottom: 36, left: 52 };
-  const width = 700 - margin.left - margin.right;
-  const height = 300 - margin.top - margin.bottom;
-  const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
-  const rows = d.benchmark_by_year;
-  const x = d3.scaleBand().domain(rows.map(r => r.year)).range([0, width]).padding(0.2);
-  const yMax = d3.max(rows, r => Math.max(r.actual, r.benchmark)) / 1e6;
-  const y = d3.scaleLinear().domain([0, Math.ceil(yMax * 1.1)]).range([height, 0]);
-  g.append("g").call(d3.axisLeft(y).ticks(5));
-  g.append("g").attr("transform", `translate(0,${height})`).call(d3.axisBottom(x).tickFormat(d3.format("d")));
-  g.selectAll(".bench").data(rows).join("rect").attr("x", d => x(d.year) + x.bandwidth()/2 + 2).attr("width", x.bandwidth()/2 - 3).attr("y", d => y(d.benchmark/1e6)).attr("height", d => height - y(d.benchmark/1e6)).attr("fill", "#9AA7B5");
-  g.selectAll(".act").data(rows).join("rect").attr("x", d => x(d.year) - 2).attr("width", x.bandwidth()/2 - 3).attr("y", d => y(d.actual/1e6)).attr("height", d => height - y(d.actual/1e6)).attr("fill", "#315C8C");
 }
 
 // ---- My Bill ----
@@ -494,6 +472,10 @@ document.addEventListener("DOMContentLoaded", () => {
   byId("addrInput").addEventListener("keydown", e => { if (e.key === "Enter") run(); });
   document.querySelectorAll("a[data-src]").forEach(a => {
     a.addEventListener("click", e => { e.preventDefault(); const k = a.getAttribute("data-src"); if (COUNTY.sources[k]) window.open(COUNTY.sources[k], "_blank"); });
+  });
+  byId("countySelect").addEventListener("change", (e) => {
+    const c = e.target.value;
+    if (c === "mecklenburg") { loadAll(); }
   });
   loadAll();
 });

@@ -1,14 +1,14 @@
-# NC Property Tax Pressure Index — Mecklenburg County (Static Demo)
+# NC Property Tax — Understanding HB 1089 (Static Demo)
 
-A static, single-county demonstration built for consultant review. It has two pages,
-both static and hosted on GitHub Pages (no backend required):
+A static demonstration built for consultant review, hosted on GitHub Pages (no backend
+required). It is a single page (`index.html`) with a **My Bill / County** toggle:
 
-- **`index.html`** — the county-level 2016–2025 pressure index: Leaflet map, D3
-  revenue/spending Sankey, and a benchmark-by-year chart.
-- **`compare.html`** — a per-property **Mecklenburg Property Tax Comparison**: enter a
-  Mecklenburg address, pick the matching parcel, and see its county tax at the actual
-  2025 county rate vs. a rate implied by a 2016-to-2025 inflation-plus-population
-  benchmark, with annual difference and comparison bars.
+- **County** view — the county-level 2016–2025 pressure index: a visual **grade**
+  (A–D), a revenue/spending **Sankey**, a Leaflet map, and a county selector
+  (Mecklenburg now, Halifax next).
+- **My Bill** view — enter a Mecklenburg address, pick the matching parcel, and see its
+  county tax at the actual 2025 county rate vs. a rate implied by a 2016-to-2025
+  inflation-plus-population benchmark, with annual difference and comparison bars.
 
 ## How the county-level index works (index.html)
 
@@ -19,7 +19,7 @@ that benchmark (0 = at or below benchmark, up to 10 = above in every year). A ne
 `difference_pct` means the county raised less property tax than the benchmark over the
 period.
 
-## How the property comparison works (compare.html)
+## How the property comparison works (My Bill)
 
 The comparison holds the property's **assessed value constant** and changes only the
 **county tax rate**, per the brief's calculation contract:
