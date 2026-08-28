@@ -93,6 +93,7 @@
   .bill-card.pos .amt, .bill-card.pos .diff-note { color: #2c6e2c; }
   .bill-card.neg { background: #fbeceb; border-color: #e6bfbc; }
   .bill-card.neg .amt, .bill-card.neg .diff-note { color: #c0392b; }
+  .below-sentence { margin-top: 26px; padding: 22px 20px; border-radius: 12px; background: #eef4ee; border: 1px solid #cddcdd; color: #2c6e2c; font-size: 17px; font-weight: 700; line-height: 1.45; }
   .detail-item { font-size: 13.5px; margin: 4px 0; color: #444; }
   .detail-item b { color: #222; }
   .sources { font-size: 12.5px; line-height: 1.6; }
@@ -135,7 +136,30 @@
         </select>
         <div class="grade-badge" id="gradeBadge" title=""></div>
       </div>
-      <details class="section-card">
+      <details class="section-card" open>
+        <summary>Check My Address</summary>
+        <div class="body">
+          <div class="search-row">
+            <input id="addrInput" type="text" placeholder="Street address, e.g. 1000 E Woodlawn Rd" autocomplete="off" aria-label="Street address" />
+            <button id="searchBtn" type="button">Search</button>
+          </div>
+          <p class="hint">Partial addresses are OK. Pick a specific property if several match. The county is set automatically from your address.</p>
+          <div id="status" role="status"></div>
+          <ul class="cands" id="cands"></ul>
+          <div id="nores" class="hidden">
+            <p class="note" style="color:#8a3b3b;">No residential properties matched in a supported county. Check the spelling or try a nearby street name.</p>
+          </div>
+          <div id="billMeta" class="hidden">
+            <div class="rule" style="height:1px;background:#e2e2e2;margin:14px 0;"></div>
+            <p class="prop-line"><b>Address:</b> <span id="rAddress"></span></p>
+            <p class="prop-line"><b>Parcel ID:</b> <span id="rParcel"></span></p>
+            <p class="prop-line"><b>Assessed value:</b> <span id="rValue"></span> (<span id="rBasis"></span>)</p>
+            <p class="prop-line"><b>Use:</b> <span id="rUse"></span></p>
+            <p class="note">Parcel data is a live NC OneMap snapshot and may predate the 2025 tax year. Sources and method on the right.</p>
+          </div>
+        </div>
+      </details>
+      <details class="section-card county-collapsible">
         <summary>County Revenue &amp; Spending Flow</summary>
         <div class="body" style="position:relative;">
           <p class="chart-note">Share of total revenue by source (left) flows into a shared General Fund pool, then out by spending area (right).</p>
@@ -143,7 +167,7 @@
           <svg id="sankey" viewBox="0 0 700 520" width="100%"></svg>
         </div>
       </details>
-      <details class="section-card">
+      <details class="section-card county-collapsible">
         <summary>County Financial Data</summary>
         <div class="body">
           <p class="chart-note">County-level constants behind the per-property benchmark (FY figures).</p>
@@ -164,29 +188,6 @@
           <p class="sources" id="srcPara"><b>Sources:</b>&nbsp;</p>
         </div>
       </details>
-      <details class="section-card" open>
-        <summary>Check My Address</summary>
-        <div class="body">
-          <div class="search-row">
-            <input id="addrInput" type="text" placeholder="Street address, e.g. 1000 E Woodlawn Rd" autocomplete="off" aria-label="Street address" disabled />
-            <button id="searchBtn" type="button" disabled>Search</button>
-          </div>
-          <p class="hint">Partial addresses are OK. Pick a specific property if several match.</p>
-          <div id="status" role="status"></div>
-          <ul class="cands" id="cands"></ul>
-          <div id="nores" class="hidden">
-            <p class="note" style="color:#8a3b3b;">No residential properties matched. Check the spelling or try a nearby street name.</p>
-          </div>
-          <div id="billMeta" class="hidden">
-            <div class="rule" style="height:1px;background:#e2e2e2;margin:14px 0;"></div>
-            <p class="prop-line"><b>Address:</b> <span id="rAddress"></span></p>
-            <p class="prop-line"><b>Parcel ID:</b> <span id="rParcel"></span></p>
-            <p class="prop-line"><b>Assessed value:</b> <span id="rValue"></span> (<span id="rBasis"></span>)</p>
-            <p class="prop-line"><b>Use:</b> <span id="rUse"></span></p>
-            <p class="note">Parcel data is a live NC OneMap snapshot and may predate the 2025 tax year. Sources and method on the right.</p>
-          </div>
-        </div>
-      </details>
       <p class="outline-note">County-level index for demonstration, 2016–2025. Based on county property tax revenue, population, and CPI-U.</p>
     </section>
   </aside>
@@ -199,7 +200,8 @@
 
     <!-- Bill analysis -->
     <div id="billResults" class="view hidden">
-      <div class="bill-cards">
+      <p class="below-sentence hidden" id="belowSentence"></p>
+      <div class="bill-cards" id="billCards">
         <div class="bill-card">
           <div class="lab">What you paid</div>
           <div class="amt" id="mActual"></div>
@@ -295,10 +297,9 @@ async function selectCounty(key) {
   const c = key ? COUNTIES[key] : null;
 
   if (!c) {
-    // No county chosen: clear results, disable search, show full NC view.
+    // No county chosen: clear results, hide the two county collapsibles.
     clearBill();
     setCollapsibles(false);
-    setCountySearchEnabled(false);
     setStatus("");
     byId("cands").innerHTML = "";
     byId("gradeBadge").classList.remove("show");
@@ -320,7 +321,6 @@ async function selectCounty(key) {
     renderSankey(j);
     fillDetails();
     setCollapsibles(true);
-    setCountySearchEnabled(true);
     updateCountyLabels();
     setStatus("");
     recolorMap();
@@ -331,15 +331,11 @@ async function selectCounty(key) {
   }
 }
 
-function setCountySearchEnabled(on) {
-  byId("addrInput").disabled = !on;
-  byId("searchBtn").disabled = !on;
-  byId("addrInput").placeholder = on ? "Street address, e.g. 1000 E Woodlawn Rd" : "Select a county first";
-}
-
-// Collapse + disable/enable the county collapsibles based on selection state.
+// Collapse + disable/enable the county-dependent collapsibles based on
+// selection state. "Check My Address" is always available (it does not
+// depend on a county being chosen), so it is left untouched.
 function setCollapsibles(on) {
-  document.querySelectorAll("details.section-card").forEach(d => {
+  document.querySelectorAll("details.county-collapsible").forEach(d => {
     d.classList.toggle("disabled", !on);
     if (!on) d.removeAttribute("open");
   });
@@ -348,7 +344,18 @@ function setCollapsibles(on) {
 function clearBill() {
   byId("billResults").classList.add("hidden");
   byId("billMeta").classList.add("hidden");
+  byId("belowSentence").classList.add("hidden");
+  byId("billCards").classList.remove("hidden");
   if (PARCEL_LAYER) { MAP && MAP.removeLayer(PARCEL_LAYER); PARCEL_LAYER = null; }
+}
+
+// Clear the address input and any search/bill output from "Check My Address".
+function clearAddress() {
+  byId("addrInput").value = "";
+  byId("cands").innerHTML = "";
+  byId("nores").classList.add("hidden");
+  byId("status").textContent = "";
+  clearBill();
 }
 
 // ---- county panel ----
@@ -498,29 +505,59 @@ function bindSourceLinks() {
   });
 }
 
+// Query NC OneMap parcels for an address, optionally scoped to a county fips
+// (3-char cntyfips: e.g. "083"). Returns usable residential parcels.
+async function fetchAddressFeatures(q, cntyfips) {
+  const where = PT.buildAddressWhere(q);
+  if (!where) return [];
+  const body = new URLSearchParams();
+  body.append("where", cntyfips ? `(${where}) AND stcntyfips = '${cntyfips}'` : `(${where}) AND stcntyfips LIKE '37%'`);
+  body.append("outFields", "parno,siteadd,parval,parvaltype,parusecode,parusedesc,stcntyfips,cntyfips");
+  body.append("f", "pjson");
+  body.append("returnGeometry", "false");
+  body.append("resultRecordCount", "12");
+  const resp = await fetch(ONEMAP_QUERY, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: body.toString() });
+  const data = JSON.parse(await resp.text());
+  if (data.error) throw new Error(data.error.message || "Service error");
+  return (data.features || []).map(f => f.attributes).filter(PT.isUsableResidential);
+}
+
+// Infer the supported county for a raw address by querying all NC parcels and
+// mapping the first residential hit's stcntyfips to a COUNTIES key.
+async function inferCountyKey(q) {
+  const feats = await fetchAddressFeatures(q, null);
+  for (const f of feats) {
+    const sfips = String(f.stcntyfips || "");
+    for (const k in COUNTIES) {
+      if (COUNTIES[k].enabled && COUNTIES[k].fips === sfips) return k;
+    }
+  }
+  return null;
+}
+
 async function searchAddress(query) {
   const q = (query || "").trim();
-  if (!q) { setStatus("Enter an address."); return; }
-  if (!SELECTED || !COUNTIES[SELECTED]) { setStatus("Select a county first."); return; }
-  const cntyfips = COUNTY.fips;
+  if (!q) { setStatus(""); return; }
   byId("searchBtn").disabled = true;
   setStatus("Searching…");
   byId("cands").innerHTML = "";
   byId("nores").classList.add("hidden");
+  clearBill();
   try {
     const where = PT.buildAddressWhere(q);
-    if (!where) { setStatus("Enter an address."); return; }
-    const body = new URLSearchParams();
-    body.append("where", `(${where}) AND cntyfips = '${cntyfips}'`);
-    body.append("outFields", "parno,siteadd,parval,parvaltype,parusecode,parusedesc");
-    body.append("f", "pjson");
-    body.append("returnGeometry", "false");
-    body.append("resultRecordCount", "12");
-    const resp = await fetch(ONEMAP_QUERY, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: body.toString() });
-    const text = await resp.text();
-    const data = JSON.parse(text);
-    if (data.error) throw new Error(data.error.message || "Service error");
-    const feats = (data.features || []).map(f => f.attributes).filter(PT.isUsableResidential);
+    if (!where) { setStatus(""); return; }
+
+    // Resolve the county: use the current selection, else infer it from the
+    // address and auto-select that county.
+    let key = SELECTED && COUNTIES[SELECTED] && COUNTIES[SELECTED].enabled ? SELECTED : null;
+    if (!key) {
+      key = await inferCountyKey(q);
+      if (!key) { setStatus("No residential matches in a supported county. Try a street name or house number."); return; }
+      byId("countySelect").value = key; // programmatic: does not fire change
+      await selectCounty(key);           // loads + enables county collapsibles
+    }
+
+    const feats = await fetchAddressFeatures(q, COUNTIES[key].fips);
     if (feats.length === 0) { setStatus(""); byId("nores").classList.remove("hidden"); return; }
     renderCandidates(feats);
     setStatus(feats.length + " residential match" + (feats.length > 1 ? "es" : "") + (feats.length > 8 ? " (showing first 8)." : "."));
@@ -555,14 +592,29 @@ function selectParcel(f) {
   byId("rUse").textContent = (f.parusedesc || f.parusecode || "n/a");
   byId("billMeta").classList.remove("hidden");
 
-  byId("mActual").textContent = fmtMoney(vm.tax_actual);
-  byId("mScenario").textContent = fmtMoney(vm.tax_scenario);
-  const over = vm.difference > 0;
-  byId("mDiff").textContent = fmtMoney(vm.difference);
-  byId("mDiffNote").textContent = over ? "This amendment could have saved you " + fmtMoney(Math.abs(vm.difference)) : "";
-  const diffCard = byId("diffCard");
-  diffCard.classList.remove("pos", "neg");
-  diffCard.classList.add(over ? "neg" : "pos");
+  // When the county as a whole was below the HB 1089 benchmark, a simple
+  // sentence replaces the three-box comparison. Otherwise show the boxes.
+  const sentence = byId("belowSentence");
+  const cards = byId("billCards");
+  if (vm.below_benchmark) {
+    const c = SELECTED ? COUNTIES[SELECTED] : null;
+    const nm = c ? c.label.replace(/ County$/, "") : "the county";
+    sentence.textContent = "Property tax rate growth in " + nm + " County was below the maximum proposed under HB 1089.";
+    sentence.classList.remove("hidden");
+    cards.classList.add("hidden");
+  } else {
+    sentence.classList.add("hidden");
+    sentence.textContent = "";
+    cards.classList.remove("hidden");
+    byId("mActual").textContent = fmtMoney(vm.tax_actual);
+    byId("mScenario").textContent = fmtMoney(vm.tax_scenario);
+    const over = vm.difference > 0;
+    byId("mDiff").textContent = fmtMoney(vm.difference);
+    byId("mDiffNote").textContent = over ? "This amendment could have saved you " + fmtMoney(Math.abs(vm.difference)) : "";
+    const diffCard = byId("diffCard");
+    diffCard.classList.remove("pos", "neg");
+    diffCard.classList.add(over ? "neg" : "pos");
+  }
   byId("billResults").classList.remove("hidden");
   highlightParcel(f.parno);
 }
@@ -601,6 +653,8 @@ document.addEventListener("DOMContentLoaded", () => {
   byId("searchBtn").addEventListener("click", run);
   byId("addrInput").addEventListener("keydown", e => { if (e.key === "Enter") run(); });
   byId("countySelect").addEventListener("change", (e) => {
+    // A user-driven county change clears the address so it does not drift.
+    clearAddress();
     selectCounty(e.target.value || null);
   });
   setCollapsibles(false);
