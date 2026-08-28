@@ -316,12 +316,11 @@ function renderPanel(d) {
 }
 
 function renderMap(gj) {
-  MAP = L.map("map", { scrollWheelZoom: true }).setView([35.28, -80.83], 10);
+  MAP = L.map("map", { scrollWheelZoom: true }).setView([35.5, -79.0], 7);
   L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", { attribution: "&copy; OpenStreetMap &copy; CARTO" }).addTo(MAP);
   const color = DATA.score == null ? "#BDBDBD" : (GRADE[String(DATA.score)] || GRADE_NA).c;
   const layer = L.geoJSON(gj, { style: () => ({ fillColor: color, weight: 1.5, opacity: 1, color: "#222", fillOpacity: 0.75 }) }).addTo(MAP);
   layer.bindTooltip(`<strong>${DATA.label}</strong><br/>Grade: ${DATA.score==null?"Data not reported":(GRADE[String(DATA.score)]||GRADE_NA).g}<br/>Percent gap: ${pctSigned(DATA.difference_pct)}<br/>Amount gap: ${fmtMoney(Math.abs(DATA.difference_dollars))}`);
-  MAP.fitBounds(layer.getBounds(), { padding: [20, 20] });
 }
 
 function renderSankey(d) {
