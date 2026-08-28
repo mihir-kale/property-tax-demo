@@ -70,6 +70,9 @@
     border-radius: 4px; font-size: 12px; pointer-events: none; z-index: 1000; display: none;
   }
   .footer-note { font-size: 12px; color: #888; margin-top: 16px; line-height: 1.45; }
+  .demo-link { display: inline-block; margin-top: 16px; font-size: 14px; font-weight: 700; color: #fff;
+    background: #315C8C; padding: 10px 14px; border-radius: 6px; text-decoration: none; }
+  .demo-link:hover { background: #274a70; }
   @media (max-width: 850px) {
     #app { grid-template-columns: 1fr; grid-template-rows: auto 55vh auto; height: auto; }
     .side-panel { box-shadow: none; overflow: visible; }
@@ -112,6 +115,7 @@
     </details>
 
     <p class="footer-note">County-level index for demonstration. Based on Mecklenburg County property tax revenue, county population, and CPI-U, 2016–2025.</p>
+    <a href="compare.html" class="demo-link">Compare a single property's county tax &rarr;</a>
   </div>
 
   <div class="map-wrap">
