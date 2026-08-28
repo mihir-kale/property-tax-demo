@@ -48,8 +48,6 @@
     justify-content: center; color: #fff; font-size: 22px; font-weight: 900; flex: 0 0 auto;
   }
   .grade-badge.show { display: flex; }
-  .panel-sentence { font-size: 14px; line-height: 1.45; margin: 0 0 16px; }
-  .panel-sentence strong { font-weight: 900; }
   .section-card { margin-top: 12px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; overflow: hidden; }
   .section-card summary { cursor: pointer; font-size: 15px; font-weight: 800; padding: 12px 14px; background: #fafafa; list-style: none; }
   .section-card summary::-webkit-details-marker { display: none; }
@@ -67,6 +65,7 @@
   /* My Bill left panel */
   .search-row { display: flex; gap: 8px; }
   #addrInput { flex: 1; font-size: 15px; padding: 11px 12px; border: 1px solid #cfcfcf; border-radius: 6px; min-width: 0; }
+  #addrInput:disabled { background: #eee; color: #999; }
   #searchBtn { font-size: 15px; font-weight: 700; padding: 11px 16px; border: none; border-radius: 6px; background: #315C8C; color: #fff; cursor: pointer; white-space: nowrap; }
   #searchBtn:disabled { background: #9AA7B5; cursor: default; }
   .hint { font-size: 12.5px; color: #888; margin: 8px 0 0; line-height: 1.4; }
@@ -128,13 +127,14 @@
     <section id="countyPanel" class="view active">
       <div class="county-bar">
         <select id="countySelect" aria-label="Select county">
+          <option value="" selected>--Select a County--</option>
           <option value="mecklenburg">Mecklenburg County</option>
           <option value="halifax" disabled>Halifax County (coming soon)</option>
         </select>
         <div class="grade-badge" id="gradeBadge" title=""></div>
       </div>
       <details class="section-card">
-        <summary>Revenue &amp; spending flow</summary>
+        <summary>County Revenue &amp; Spending Flow</summary>
         <div class="body" style="position:relative;">
           <p class="chart-note">Share of total revenue by source (left) flows into a shared General Fund pool, then out by spending area (right).</p>
           <div class="sankey-tooltip" id="sankeyTip"></div>
@@ -142,7 +142,7 @@
         </div>
       </details>
       <details class="section-card">
-        <summary>County financial data</summary>
+        <summary>County Financial Data</summary>
         <div class="body">
           <p class="chart-note">County-level constants behind the per-property benchmark (FY figures).</p>
           <p class="detail-item"><b>Actual county rate:</b> <span id="dActualRate"></span> per $100 (FY2025&ndash;26 official Mecklenburg county rate).</p>
@@ -162,14 +162,12 @@
           <p class="sources"><b>Sources:</b> Mecklenburg county tax rate (<a href="#" data-src="rates">tax.mecknc.gov</a>), county rate announcement (<a href="#" data-src="rate_news">pi.mecknc.gov</a>), NCDOR levy/valuation reports (<a href="#" data-src="ncdor_levy">ncdor.gov</a>), NC OneMap parcels (<a href="#" data-src="parcels">nconemap.gov</a>), U.S. Census population estimates (<a href="#" data-src="census_pop">census.gov</a>), BLS CPI-U (<a href="#" data-src="bls_cpi">bls.gov</a>).</p>
         </div>
       </details>
-      <p class="panel-sentence" id="sentence"></p>
-
       <details class="section-card" open>
-        <summary>My address</summary>
+        <summary>Check My Address</summary>
         <div class="body">
           <div class="search-row">
-            <input id="addrInput" type="text" placeholder="Street address, e.g. 1000 E Woodlawn Rd" autocomplete="off" aria-label="Street address" />
-            <button id="searchBtn" type="button">Search</button>
+            <input id="addrInput" type="text" placeholder="Street address, e.g. 1000 E Woodlawn Rd" autocomplete="off" aria-label="Street address" disabled />
+            <button id="searchBtn" type="button" disabled>Search</button>
           </div>
           <p class="hint">Partial addresses are OK. Pick a specific property if several match.</p>
           <div id="status" role="status"></div>
@@ -231,29 +229,100 @@ const BUCKET_COLORS = {
 
 const ONEMAP_QUERY = "https://services.nconemap.gov/secure/rest/services/NC1Map_Parcels/MapServer/0/query";
 
+const NC_STFIPS = "37";
+
+// Registrar of selectable counties. `fips` is the full 5-digit STCOFIPS. Counties
+// without a data file render as neutral outlines and cannot be searched yet.
+const COUNTIES = {
+  "mecklenburg": { label: "Mecklenburg County", json: "data/mecklenburg.json", geo: "data/mecklenburg.geojson", benchmark: "data/mecklenburg_benchmark.json", fips: "37119", enabled: true }
+};
+
 const fmtMoney = (x) => "$" + Math.abs(x).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + (x < 0 ? " less" : "");
 const pctSigned = (x) => (x > 0 ? "+" : "") + x.toFixed(1) + "%";
 const fmtBig = (x) => (x / 1e6).toLocaleString(undefined, { maximumFractionDigits: 1 }) + "M";
 
-let DATA = null;      // county mecklenburg.json
-let COUNTY = null;    // benchmark constant mecklenburg_benchmark.json
+let DATA = null;      // selected county presentation json (mecklenburg.json)
+let COUNTY = null;    // selected county benchmark (mecklenburg_benchmark.json)
+let COUNTY_DATA = {}; // fips -> {label, score, diffPct, diffDollars} for counties with data
+let NC_GEO = null;    // nc_counties.geojson (all NC counties)
+let SELECTED = null;  // key into COUNTIES currently selected, or null
 let MAP = null;
+let COUNTIES_LAYER = null;
 let PARCEL_LAYER = null;
-
 const byId = (id) => document.getElementById(id);
 
 // ---- data loading ----
 async function loadAll() {
-  const [j, gj, bm] = await Promise.all([
-    fetch("data/mecklenburg.json").then(r => r.json()),
-    fetch("data/mecklenburg.geojson").then(r => r.json()),
-    fetch("data/mecklenburg_benchmark.json").then(r => r.json())
+  const [nc, mj] = await Promise.all([
+    fetch("data/nc_counties.geojson").then(r => r.json()).catch(e => { console.error("nc counties load failed", e); return { type: "FeatureCollection", features: [] }; }),
+    fetch(COUNTIES.mecklenburg.json).then(r => r.json()).catch(e => { console.error("county preload failed", e); return null; })
   ]);
-  DATA = j; COUNTY = bm;
-  renderPanel(j);
-  renderMap(gj);
-  renderSankey(j);
-  fillDetails();
+  NC_GEO = nc;
+  if (mj) refreshCountyData(COUNTIES.mecklenburg.fips, mj); // color Mecklenburg on load
+  renderMap();
+  recolorMap();
+}
+
+// Store a county's presentation data for map coloring (Mecklenburg now,
+// Halifax next). `d` is a mecklenburg.json-style object.
+function refreshCountyData(fips, d) {
+  if (!d) return;
+  COUNTY_DATA[fips] = {
+    label: d.label,
+    score: d.score,
+    diffPct: d.difference_pct,
+    diffDollars: d.difference_dollars
+  };
+}
+
+async function selectCounty(key) {
+  if (key === SELECTED) return;
+  SELECTED = key || null;
+  const c = key ? COUNTIES[key] : null;
+
+  if (!c) {
+    // No county chosen: clear results, disable search, show full NC view.
+    clearBill();
+    setCountySearchEnabled(false);
+    setStatus("");
+    byId("cands").innerHTML = "";
+    byId("gradeBadge").classList.remove("show");
+    if (MAP) MAP.fitBounds([[33.8, -84.4], [36.6, -75.4]], { padding: [10, 10] });
+    recolorMap();
+    return;
+  }
+
+  setStatus("Loading county…");
+  try {
+    const [j, bm] = await Promise.all([
+      fetch(c.json).then(r => r.json()),
+      fetch(c.benchmark).then(r => r.json())
+    ]);
+    DATA = j; COUNTY = bm;
+    refreshCountyData(c.fips, j);
+    renderPanel(j);
+    renderSankey(j);
+    fillDetails();
+    setCountySearchEnabled(true);
+    setStatus("");
+    recolorMap();
+    zoomToCounty(c.fips);
+  } catch (err) {
+    console.error(err);
+    setStatus("Could not load county data. Please try again.");
+  }
+}
+
+function setCountySearchEnabled(on) {
+  byId("addrInput").disabled = !on;
+  byId("searchBtn").disabled = !on;
+  byId("addrInput").placeholder = on ? "Street address, e.g. 1000 E Woodlawn Rd" : "Select a county first";
+}
+
+function clearBill() {
+  byId("billResults").classList.add("hidden");
+  byId("billMeta").classList.add("hidden");
+  if (PARCEL_LAYER) { MAP && MAP.removeLayer(PARCEL_LAYER); PARCEL_LAYER = null; }
 }
 
 // ---- county panel ----
@@ -265,16 +334,61 @@ function renderPanel(d) {
   badge.style.color = gd.g === "N/A" ? "#333" : "#fff";
   badge.title = d.score == null ? "Data not reported" : `Grade ${gd.g} (score ${d.score}/3)`;
   badge.classList.add("show");
-  const moreLess = (x) => x < 0 ? "less" : "more";
-  byId("sentence").innerHTML = `${d.label} collected <strong>${pctSigned(d.difference_pct)}</strong> property tax revenue ${moreLess(d.difference_dollars)} than it would under the inflation + population benchmark ($2016–2025).`;
 }
 
-function renderMap(gj) {
+function gradeFor(score) {
+  return score == null ? GRADE_NA : (GRADE[String(score)] || GRADE_NA);
+}
+
+function renderMap() {
   MAP = L.map("map", { scrollWheelZoom: true }).setView([35.5, -79.0], 7);
   L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", { attribution: "&copy; OpenStreetMap &copy; CARTO" }).addTo(MAP);
-  const color = DATA.score == null ? "#BDBDBD" : (GRADE[String(DATA.score)] || GRADE_NA).c;
-  const layer = L.geoJSON(gj, { style: () => ({ fillColor: color, weight: 1.5, opacity: 1, color: "#222", fillOpacity: 0.75 }) }).addTo(MAP);
-  layer.bindTooltip(`<strong>${DATA.label}</strong><br/>Grade: ${DATA.score==null?"Data not reported":(GRADE[String(DATA.score)]||GRADE_NA).g}<br/>Percent gap: ${pctSigned(DATA.difference_pct)}<br/>Amount gap: ${fmtMoney(Math.abs(DATA.difference_dollars))}`);
+  COUNTIES_LAYER = L.geoJSON(NC_GEO, {
+    style: () => ({ fillColor: "#e8e8e8", weight: 1, opacity: 1, color: "#666", fillOpacity: 0.6 }),
+    onEachFeature: (feat, layer) => {
+      const fips = String(feat.id);
+      const nm = feat.properties && feat.properties.NAME;
+      layer.on("click", () => selectCountyFromFips(fips));
+      layer.bindTooltip(() => {
+        const d = COUNTY_DATA[fips];
+        if (!d) return `<strong>${esc(nm)}</strong><br/>No benchmark data yet`;
+        return `<strong>${esc(d.label)}</strong><br/>Grade: ${gradeFor(d.score).g}<br/>Percent gap: ${pctSigned(d.diffPct)}<br/>Amount gap: ${fmtMoney(Math.abs(d.diffDollars))}`;
+      });
+    }
+  }).addTo(MAP);
+}
+
+// Color each county: grade color if it has data, neutral grey otherwise.
+function recolorMap() {
+  if (!COUNTIES_LAYER || !NC_GEO) return;
+  COUNTIES_LAYER.eachLayer(l => {
+    const fips = String(l.feature.id);
+    const d = COUNTY_DATA[fips];
+    const sel = SELECTED && COUNTIES[SELECTED].fips === fips;
+    if (!d) {
+      l.setStyle({ fillColor: "#e8e8e8", weight: sel ? 2.5 : 1, color: sel ? "#222" : "#666", fillOpacity: 0.6 });
+    } else {
+      l.setStyle({ fillColor: gradeFor(d.score).c, weight: sel ? 2.5 : 1, color: sel ? "#222" : "#666", fillOpacity: 0.75 });
+    }
+  });
+}
+
+function zoomToCounty(fips) {
+  const target = COUNTIES_LAYER.getLayers().find(l => String(l.feature.id) === fips);
+  if (target && target.getBounds().isValid()) {
+    target.bringToFront();
+    MAP.fitBounds(target.getBounds(), { maxZoom: 11, padding: [24, 24] });
+  }
+}
+
+function selectCountyFromFips(fips) {
+  for (const key in COUNTIES) {
+    if (COUNTIES[key].fips === fips && COUNTIES[key].enabled) {
+      byId("countySelect").value = key;
+      selectCounty(key);
+      return;
+    }
+  }
 }
 
 function renderSankey(d) {
@@ -340,6 +454,8 @@ function setStatus(msg) { byId("status").textContent = msg || ""; }
 async function searchAddress(query) {
   const q = (query || "").trim();
   if (!q) { setStatus("Enter an address."); return; }
+  if (!SELECTED || !COUNTIES[SELECTED]) { setStatus("Select a county first."); return; }
+  const cntyfips = COUNTY.fips;
   byId("searchBtn").disabled = true;
   setStatus("Searching…");
   byId("cands").innerHTML = "";
@@ -348,7 +464,7 @@ async function searchAddress(query) {
     const where = PT.buildAddressWhere(q);
     if (!where) { setStatus("Enter an address."); return; }
     const body = new URLSearchParams();
-    body.append("where", where);
+    body.append("where", `(${where}) AND cntyfips = '${cntyfips}'`);
     body.append("outFields", "parno,siteadd,parval,parvaltype,parusecode,parusedesc");
     body.append("f", "pjson");
     body.append("returnGeometry", "false");
@@ -441,8 +557,7 @@ document.addEventListener("DOMContentLoaded", () => {
     a.addEventListener("click", e => { e.preventDefault(); const k = a.getAttribute("data-src"); if (COUNTY.sources[k]) window.open(COUNTY.sources[k], "_blank"); });
   });
   byId("countySelect").addEventListener("change", (e) => {
-    const c = e.target.value;
-    if (c === "mecklenburg") { loadAll(); }
+    selectCounty(e.target.value || null);
   });
   loadAll();
 });
