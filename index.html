@@ -88,14 +88,6 @@
     <div class="score-box" id="scoreBox" style="background:#54B978;">0</div>
     <p class="panel-sentence" id="sentence"></p>
 
-    <div class="section-subhead">Largest revenue source</div>
-    <div class="outline-box" id="topRevenue">—</div>
-    <div class="detail-line" id="topRevenueDetail"></div>
-
-    <div class="section-subhead">Largest spending area</div>
-    <div class="outline-box" id="topSpending">—</div>
-    <div class="detail-line" id="topSpendingDetail"></div>
-
     <details class="section-card">
       <summary>Revenue &amp; spending flow</summary>
       <div class="body">
@@ -176,12 +168,6 @@ function renderPanel(d) {
 
   const sent = document.getElementById("sentence");
   sent.innerHTML = `${d.label} collected <strong>${pctAbs(d.difference_pct)} ${moreLess(d.difference_dollars)}</strong> property tax revenue than it would have under the inflation plus population benchmark, or <strong>${fmtMoney(Math.abs(d.difference_dollars))} ${moreLess(d.difference_dollars)}</strong>.`;
-
-  const rev = d.revenue[0], spd = d.spending[0];
-  document.getElementById("topRevenue").textContent = rev.area;
-  document.getElementById("topRevenueDetail").textContent = `${fmtMoney(rev.total)}, or ${(rev.share*100).toFixed(1)}% of revenue`;
-  document.getElementById("topSpending").textContent = spd.area;
-  document.getElementById("topSpendingDetail").textContent = `${fmtMoney(spd.total)}, or ${(spd.share*100).toFixed(1)}% of spending`;
 }
 
 function renderMap(gj) {
