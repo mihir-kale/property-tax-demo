@@ -105,6 +105,14 @@ test("residential filter keeps usable homes and excludes commercial/non-value", 
   assert.equal(PT.isUsableResidential({ parval: 260653, parusecode: null }), false);
 });
 
+test("residential filter accepts counties with only a description (e.g. Halifax)", () => {
+  // Halifax leaves parusecode blank and only sets parusedesc="Residential".
+  assert.equal(PT.isUsableResidential({ parval: 132700, parusecode: "", parusedesc: "Residential" }), true);
+  assert.equal(PT.isUsableResidential({ parval: 132700, parusecode: "R100", parusedesc: "SINGLE FAMILY RESIDENTIAL" }), true);
+  // A commercial description should still be excluded even with a value.
+  assert.equal(PT.isUsableResidential({ parval: 500000, parusecode: "", parusedesc: "Commercial" }), false);
+});
+
 test("ambiguity: a multi-match search yields a candidate list, not a silent pick", () => {
   // Simulation of one OneMap response with several matching residential parcels.
   const mock = [

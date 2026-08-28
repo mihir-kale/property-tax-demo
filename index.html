@@ -54,6 +54,8 @@
   .section-card summary:after { content: " ▾"; color: #888; }
   .section-card[open] summary:after { content: " ▴"; }
   .section-card .body { padding: 4px 14px 14px; }
+  .section-card.disabled { opacity: 0.55; pointer-events: none; }
+  .section-card.disabled summary { cursor: default; }
   .chart-note { color: #666; font-size: 12px; margin: 4px 0 8px; line-height: 1.35; }
   #sankey { width: 100%; }
   .sankey-tooltip {
@@ -295,6 +297,7 @@ async function selectCounty(key) {
   if (!c) {
     // No county chosen: clear results, disable search, show full NC view.
     clearBill();
+    setCollapsibles(false);
     setCountySearchEnabled(false);
     setStatus("");
     byId("cands").innerHTML = "";
@@ -316,6 +319,7 @@ async function selectCounty(key) {
     renderPanel(j);
     renderSankey(j);
     fillDetails();
+    setCollapsibles(true);
     setCountySearchEnabled(true);
     updateCountyLabels();
     setStatus("");
@@ -331,6 +335,14 @@ function setCountySearchEnabled(on) {
   byId("addrInput").disabled = !on;
   byId("searchBtn").disabled = !on;
   byId("addrInput").placeholder = on ? "Street address, e.g. 1000 E Woodlawn Rd" : "Select a county first";
+}
+
+// Collapse + disable/enable the county collapsibles based on selection state.
+function setCollapsibles(on) {
+  document.querySelectorAll("details.section-card").forEach(d => {
+    d.classList.toggle("disabled", !on);
+    if (!on) d.removeAttribute("open");
+  });
 }
 
 function clearBill() {
@@ -591,6 +603,7 @@ document.addEventListener("DOMContentLoaded", () => {
   byId("countySelect").addEventListener("change", (e) => {
     selectCounty(e.target.value || null);
   });
+  setCollapsibles(false);
   updateCountyLabels();
   loadAll();
 });

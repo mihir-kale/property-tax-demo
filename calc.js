@@ -92,10 +92,14 @@
   }
 
   // True if a parcel attribute object is a usable ordinary residential parcel.
+  // Some counties (e.g. Halifax) leave `parusecode` blank and only populate the
+  // human-readable `parusedesc`, so fall back to that when needed.
   function isUsableResidential(attrs) {
     const v = Number(attrs && attrs.parval);
     const code = String((attrs && attrs.parusecode) || "").toUpperCase();
-    return isFinite(v) && v > 0 && code.indexOf("R") === 0;
+    const desc = String((attrs && attrs.parusedesc) || "").toUpperCase();
+    const residential = code.indexOf("R") === 0 || desc.indexOf("RESID") !== -1;
+    return isFinite(v) && v > 0 && residential;
   }
 
   return {
